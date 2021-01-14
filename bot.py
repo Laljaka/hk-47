@@ -65,6 +65,7 @@ async def on_guild_remove(guild):
 #Command to change prefix
 
 @client.command()
+@commands.has_guild_permissions(Administrator=True)
 async def changeprefix(ctx, prefix):
     if ctx.channel.id != restrictedTO:
         return
@@ -82,6 +83,7 @@ async def changeprefix(ctx, prefix):
 #------------------------------------------------------------------------------
 #Command to specify roleassign message and emojis
 @client.command()
+@commands.has_guild_permissions(manage_roles=True)
 async def roleassign(message):
     if message.channel.id != restrictedTO:
         return
@@ -175,6 +177,7 @@ async def ping(ctx):
 #Command to clean the messages
 
 @client.command()
+@commands.has_guild_permissions(manage_messages=True)
 async def purge(ctx, amount=100):
     if ctx.channel.id != restrictedTO:
         return
