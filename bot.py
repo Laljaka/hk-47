@@ -14,17 +14,27 @@ restrictedTO = 798456032358694912
 #------------------------------------------------------------------------------
 #stuff
 
+def json_read(filename):
+    with open(f'{filename}.json', 'r') as f:
+        data = json.load(f)
+    return data
+
+def json_write(filename, data):
+    with open(f'{filename}.json', 'w') as f:
+        json.dump(data, f, indent =4)
+
 def get_prefix(client, message):
-  with open('storage.json', 'r') as f:
-    prefixes = json.load(f)
-  return prefixes[str(message.guild.id)]['prefix']
+  #with open('storage.json', 'r') as f:
+    #prefixes = json.load(f)
+    prefixes = json_read('storage')
+    return prefixes[str(message.guild.id)]['prefix']
 
 
 client = commands.Bot(command_prefix = get_prefix, intents = intents)
 
 def check_roleassign_message(payload):
-    with open('storage.json', 'r') as f:
-        roleassign1 = json.load(f)
+    #with open('storage.json', 'r') as f:
+    roleassign1 = json_read('storage')
     return roleassign1[str(payload.guild_id)]['rolemessage']
 
 #------------------------------------------------------------------------------
@@ -39,52 +49,63 @@ async def on_ready():
 #Joining the server and creating a storage in json file
 @client.event
 async def on_guild_join(guild):
-    with open('storage.json', 'r') as f:
-        prefixes = json.load(f)
+    #with open('storage.json', 'r') as f:
+    prefixes = json_read('storage')
 
     prefixes[str(guild.id)] = {'prefix': '?', 'rolemessage': None, 'emojis': []}
 
 
-    with open('storage.json', 'w') as f:
-        json.dump(prefixes, f, indent=4)
+    #with open('storage.json', 'w') as f:
+    json_write('storage', prefixes)
 
 #------------------------------------------------------------------------------
 #Leaving the server and removing the storage
 
 @client.event
 async def on_guild_remove(guild):
-    with open('storage.json', 'r') as f:
-        prefixes = json.load(f)
+    #with open('storage.json', 'r') as f:
+    prefixes = json_read('storage')
 
     prefixes.pop(str(guild.id))
 
-    with open('storage.json', 'w') as f:
-        json.dump(prefixes, f, indent=4)
+    #with open('storage.json', 'w') as f:
+    json_write('storage', prefixes)
 
 #------------------------------------------------------------------------------
-#Command to change prefix
-
 @client.command()
-@commands.has_guild_permissions(Administrator=True)
+@commands.has_guild_permissions(administrator=True)
 async def changeprefix(ctx, prefix):
+    """
+    Command to change bot prefix
+    """
     if ctx.channel.id != restrictedTO:
         return
     else:
-        with open('storage.json', 'r') as f:
-            prefixes = json.load(f)
+        #with open('storage.json', 'r') as f:
+        prefixes = json_read('storage')
 
         prefixes[str(ctx.guild.id)]['prefix'] = prefix
 
-        with open('storage.json', 'w') as f:
-            json.dump(prefixes, f, indent=4)
+        #with open('storage.json', 'w') as f:
+        json_write('storage', prefixes)
 
         await ctx.send(f'Prefix changed to {prefix}')
 
 #------------------------------------------------------------------------------
-#Command to specify roleassign message and emojis
-@client.command()
+@client.group()
 @commands.has_guild_permissions(manage_roles=True)
-async def roleassign(message):
+async def roleassign(ctx):
+    """
+    Command to specify roleassign message and emojis
+    """
+    if ctx.invoked_subcommand == None:
+        await ctx.send('Invalid parameters passed, type (PREFIX)help roleassign to find more')
+
+@roleassign.command()
+async def add(message):
+    """
+    Command to add roleassign message
+    """
     if message.channel.id != restrictedTO:
         return
     else:
@@ -97,8 +118,8 @@ async def roleassign(message):
 
         msgtorole = await client.wait_for('message', check=check)
 
-        with open('storage.json', 'r') as f:
-            roleassign1 = json.load(f)
+        #with open('storage.json', 'r') as f:
+        roleassign1 = json_read('storage')
 
         roleassign1[str(message.guild.id)]['rolemessage'] = msgtorole.id
 
@@ -119,8 +140,22 @@ async def roleassign(message):
             i=i+1
 
 
-        with open('storage.json', 'w') as f:
-           json.dump(roleassign1, f, indent=4)
+        #with open('storage.json', 'w') as f:
+        #json.dump(roleassign1, f, indent=4)
+        json_write('storage', roleassign1)
+
+@roleassign.command()
+async def remove(message):
+    """
+    Command to remove roleassign message
+    """
+    if message.channel.id != restrictedTO:
+        return
+    else:
+        roleassign1 = json_read('storage')
+        roleassign1[str(message.guild.id)]['rolemessage'] = None
+        roleassign1[str(message.guild.id)]['emojis'] = []
+        json_write('storage', roleassign1)
 
 #------------------------------------------------------------------------------
 #Commands to add and remove roles by reacting to the message with emojis
@@ -165,20 +200,23 @@ async def on_raw_reaction_remove(payload):
             await member.remove_roles(role)
 
 #------------------------------------------------------------------------------
-#test command ping
 @client.command()
 async def ping(ctx):
+    """
+    Test command
+    """
     if ctx.channel.id != restrictedTO:
         return
     else:
         await ctx.send(f'{round(client.latency * 1000)}ms')
 
 #------------------------------------------------------------------------------
-#Command to clean the messages
-
 @client.command()
 @commands.has_guild_permissions(manage_messages=True)
 async def purge(ctx, amount=100):
+    """
+    Command to clean the messages
+    """
     if ctx.channel.id != restrictedTO:
         return
     else:
