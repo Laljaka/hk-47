@@ -109,21 +109,17 @@ async def add(message):
     if message.channel.id != restrictedTO:
         return
     else:
-        await message.channel.send('Please send the message')
-
+      
         def check(msg):
             if msg.author.id == message.author.id and msg.channel.id == restrictedTO:
                 print('what the fuck')
                 return True
 
-        msgtorole = await client.wait_for('message', check=check)
-
-        #with open('storage.json', 'r') as f:
         roleassign1 = json_read('storage')
 
-        roleassign1[str(message.guild.id)]['rolemessage'] = msgtorole.id
 
-        await message.channel.send('This message now will be used as role assigner, please specify the amount of emojis to roles you want to have')
+
+        await message.channel.send('Please specify the amount of emojis to roles you want to have')
 
         num = await client.wait_for('message', check=check)
 
@@ -131,18 +127,34 @@ async def add(message):
 
         print(roleassign1[str(message.guild.id)]['emojis'])
 
+
+        await message.channel.send('Please send the message')
+
+        msgtorole = await client.wait_for('message', check=check)
+
+        #with open('storage.json', 'r') as f:
+
+
+        roleassign1[str(message.guild.id)]['rolemessage'] = msgtorole.id
+
+
         await message.channel.send('Now please react with emojis you want to be associated with roles under your message, please note that amount of emojis should be the same as you just specified')
 
         i=0
         for run in roleassign1[str(message.guild.id)]['emojis']:
-            reaction = await client.wait_for('reaction_add')
+            reaction = await client.wait_for('reaction_add')#ADD CHECK
             roleassign1[str(message.guild.id)]['emojis'][i] = reaction[0].emoji.name
             i=i+1
 
-
+        def chek2(msg2):
+            if msg2.id == msgtorole.id: 
+                return False
+            else:
+                return True
         #with open('storage.json', 'w') as f:
         #json.dump(roleassign1, f, indent=4)
         json_write('storage', roleassign1)
+        await message.channel.purge(limit=6, check=chek2)
 
 @roleassign.command()
 async def remove(message):
