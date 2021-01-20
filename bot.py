@@ -93,32 +93,27 @@ async def changeprefix(ctx, prefix):
 
 #------------------------------------------------------------------------------
 @client.group()
-@commands.has_guild_permissions(manage_roles=True)
+@commands.has_guild_permissions(administrator=True)
+@commands.guild_only()
 async def roleassign(ctx):
     """
     Command to specify roleassign message and emojis
     """
-    if ctx.channel.id != restrictedTO:
-        return
-    else:
-        if ctx.invoked_subcommand == None:
-            await ctx.send('Invalid parameters passed, type (PREFIX)help roleassign to find more')
+    if ctx.invoked_subcommand == None:
+        prefix = get_prefix(ctx, ctx.message)
+        await ctx.send(f'Invalid parameters passed, type {prefix}help roleassign to find more')
 
 @roleassign.command()
 async def create(message):
     """
     Command to create roleassign message
     """
-    if message.channel.id != restrictedTO:
-        return
-    else:
+    def check(msg):
+        if msg.author.id == message.author.id and msg.channel.id == restrictedTO:
+            print('what the fuck')
+            return True
 
-        def check(msg):
-            if msg.author.id == message.author.id and msg.channel.id == restrictedTO:
-                print('what the fuck')
-                return True
-
-        roleassign1 = json_read('storage')
+    roleassign1 = json_read('storage')
 
 
 
@@ -131,14 +126,14 @@ async def create(message):
         ###print(roleassign1[str(message.guild.id)]['emojis'])
 
 
-        deletable = await message.channel.send('Please send the message')
+    deletable = await message.channel.send('Please send the message')
 
-        msgtorole = await client.wait_for('message', check=check)
+    msgtorole = await client.wait_for('message', check=check)
 
         #with open('storage.json', 'r') as f:
 
 
-        roleassign1[str(message.guild.id)]['rolemessage'] = msgtorole.id
+    roleassign1[str(message.guild.id)]['rolemessage'] = msgtorole.id
 
 
         #await message.channel.send('Now please react with emojis you want to be associated with roles under your message, please note that amount of emojis should be the same as you just specified')
@@ -156,15 +151,15 @@ async def create(message):
         #        return True
         #with open('storage.json', 'w') as f:
         #json.dump(roleassign1, f, indent=4)
-        json_write('storage', roleassign1)
-        await message.message.delete()
-        await deletable.delete()
+    json_write('storage', roleassign1)
+    await message.message.delete()
+    await deletable.delete()
         #await message.channel.purge(limit=6, check=chek2)
 
 @roleassign.command()
 async def add(message):
     def check(msg):
-        if msg.author.id == message.author.id and msg.channel.id == restrictedTO:
+        if msg.author.id == message.author.id:
             print('what the fuck')
             return True
     deletable = await message.channel.send("Type the exact name of the role. Please note that there should also be an emoji with exact same name as the role")
@@ -189,25 +184,19 @@ async def add(message):
 
 @roleassign.command()
 async def clear(message):
-    if message.channel.id != restrictedTO:
-        return
-    else:
-        roleassign1 = json_read('storage')
-        roleassign1[str(message.guild.id)]['emojis'] = []
-        json_write('storage', roleassign1)
+    roleassign1 = json_read('storage')
+    roleassign1[str(message.guild.id)]['emojis'] = []
+    json_write('storage', roleassign1)
 
 @roleassign.command()
 async def remove(message):
     """
     Command to remove roleassign message
     """
-    if message.channel.id != restrictedTO:
-        return
-    else:
-        roleassign1 = json_read('storage')
-        roleassign1[str(message.guild.id)]['rolemessage'] = None
-        roleassign1[str(message.guild.id)]['emojis'] = []
-        json_write('storage', roleassign1)
+    roleassign1 = json_read('storage')
+    roleassign1[str(message.guild.id)]['rolemessage'] = None
+    roleassign1[str(message.guild.id)]['emojis'] = []
+    json_write('storage', roleassign1)
 
 #------------------------------------------------------------------------------
 #Commands to add and remove roles by reacting to the message with emojis
@@ -238,20 +227,21 @@ async def on_raw_reaction_add(payload):
         return
 @client.event
 async def on_raw_reaction_remove(payload):
-    if payload.message_id == check_roleassign_message(payload) and payload.user_id == client.user.id:
-        guild = client.get_guild(payload.guild_id)#discord.utils.find(lambda g : g.id == payload.guild_id, client.guilds)
-        role = discord.utils.get(guild.roles, name=payload.emoji.name)#role = guild.get_role(payload.emoji.name)
-        #member = discord.utils.find(lambda m : m.id == payload.user_id, guild.members)
-        #member = payload.member
-        #member = guild.get_member(payload.user_id)
-        #role = guild.get_role(payload.emoji.name)
-        member = guild.get_member(payload.user_id)
-        print(guild)
-        print(payload.user_id)
-        print(member)
-        await member.remove_roles(role)
-    else:
-        return
+    if payload.user_id != client.user.id:
+        if payload.message_id == check_roleassign_message(payload):
+            guild = client.get_guild(payload.guild_id)#discord.utils.find(lambda g : g.id == payload.guild_id, client.guilds)
+            role = discord.utils.get(guild.roles, name=payload.emoji.name)#role = guild.get_role(payload.emoji.name)
+            #member = discord.utils.find(lambda m : m.id == payload.user_id, guild.members)
+            #member = payload.member
+            #member = guild.get_member(payload.user_id)
+            #role = guild.get_role(payload.emoji.name)
+            member = guild.get_member(payload.user_id)
+            print(guild)
+            print(payload.user_id)
+            print(member)
+            await member.remove_roles(role)
+        else:
+            return
 
 #------------------------------------------------------------------------------
 @client.command()
@@ -283,7 +273,7 @@ async def purge(ctx, amount=100):
 
 #------------------------------------------------------------------------------
 #To do
-
+'''
 @client.group()
 async def request(ctx):
     """
@@ -310,7 +300,7 @@ async def request(ctx):
     member = guild.get_member(usermsg.content)
     print(role)
     print(member)
-
+'''
 @client.command()
 @commands.is_owner()
 async def logout(ctx):
