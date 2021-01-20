@@ -312,6 +312,11 @@ async def request(ctx):
     print(member)
 
 @client.command()
+@commands.is_owner()
+async def logout(ctx):
+    await client.logout()
+
+@client.command()
 async def test(ctx):
 #    roleassign1 = json_read('storage')
 #    print(roleassign1[str(ctx.guild.id)]['emojis'])
