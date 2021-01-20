@@ -98,18 +98,21 @@ async def roleassign(ctx):
     """
     Command to specify roleassign message and emojis
     """
-    if ctx.invoked_subcommand == None:
-        await ctx.send('Invalid parameters passed, type (PREFIX)help roleassign to find more')
+    if ctx.channel.id != restrictedTO:
+        return
+    else:
+        if ctx.invoked_subcommand == None:
+            await ctx.send('Invalid parameters passed, type (PREFIX)help roleassign to find more')
 
 @roleassign.command()
-async def add(message):
+async def create(message):
     """
-    Command to add roleassign message
+    Command to create roleassign message
     """
     if message.channel.id != restrictedTO:
         return
     else:
-      
+
         def check(msg):
             if msg.author.id == message.author.id and msg.channel.id == restrictedTO:
                 print('what the fuck')
@@ -119,16 +122,16 @@ async def add(message):
 
 
 
-        await message.channel.send('Please specify the amount of emojis to roles you want to have')
+        #await message.channel.send('Please specify the amount of emojis to roles you want to have')
 
-        num = await client.wait_for('message', check=check)
+        #num = await client.wait_for('message', check=check)
 
-        roleassign1[str(message.guild.id)]['emojis'] = [''] * int(num.content)
+        #roleassign1[str(message.guild.id)]['emojis'] = [''] * int(num.content)
 
-        print(roleassign1[str(message.guild.id)]['emojis'])
+        ###print(roleassign1[str(message.guild.id)]['emojis'])
 
 
-        await message.channel.send('Please send the message')
+        deletable = await message.channel.send('Please send the message')
 
         msgtorole = await client.wait_for('message', check=check)
 
@@ -138,23 +141,60 @@ async def add(message):
         roleassign1[str(message.guild.id)]['rolemessage'] = msgtorole.id
 
 
-        await message.channel.send('Now please react with emojis you want to be associated with roles under your message, please note that amount of emojis should be the same as you just specified')
+        #await message.channel.send('Now please react with emojis you want to be associated with roles under your message, please note that amount of emojis should be the same as you just specified')
 
-        i=0
-        for run in roleassign1[str(message.guild.id)]['emojis']:
-            reaction = await client.wait_for('reaction_add')#ADD CHECK
-            roleassign1[str(message.guild.id)]['emojis'][i] = reaction[0].emoji.name
-            i=i+1
+        #i=0
+        #for run in roleassign1[str(message.guild.id)]['emojis']:
+        #    reaction = await client.wait_for('reaction_add')#ADD CHECK
+        #    roleassign1[str(message.guild.id)]['emojis'][i] = reaction[0].emoji.name
+        #    i=i+1
 
-        def chek2(msg2):
-            if msg2.id == msgtorole.id: 
-                return False
-            else:
-                return True
+        #def chek2(msg2):
+        #    if msg2.id == msgtorole.id:
+        #        return False
+        #    else:
+        #        return True
         #with open('storage.json', 'w') as f:
         #json.dump(roleassign1, f, indent=4)
         json_write('storage', roleassign1)
-        await message.channel.purge(limit=6, check=chek2)
+        await message.message.delete()
+        await deletable.delete()
+        #await message.channel.purge(limit=6, check=chek2)
+
+@roleassign.command()
+async def add(message):
+    def check(msg):
+        if msg.author.id == message.author.id and msg.channel.id == restrictedTO:
+            print('what the fuck')
+            return True
+    deletable = await message.channel.send("Type the exact name of the role. Please note that there should also be an emoji with exact same name as the role")
+    emojirolename = await client.wait_for('message', check=check)
+    guild = client.get_guild(message.guild.id)
+    emoji = discord.utils.get(guild.emojis, name=emojirolename.content)
+    role = discord.utils.get(guild.roles, name=emojirolename.content)
+    print(emoji)
+    print(role)
+    if emoji != None and role != None:
+        roleassign = json_read('storage')
+        roleassign[str(message.guild.id)]['emojis'].append(emoji.name)
+        json_write('storage', roleassign)
+        seek = await message.fetch_message(roleassign[str(message.guild.id)]['rolemessage'])
+        await seek.add_reaction(emoji)
+        await message.message.delete()
+        await deletable.delete()
+        await emojirolename.delete()
+    else:
+        await message.channel.send('There was an error, please try again')
+
+
+@roleassign.command()
+async def clear(message):
+    if message.channel.id != restrictedTO:
+        return
+    else:
+        roleassign1 = json_read('storage')
+        roleassign1[str(message.guild.id)]['emojis'] = []
+        json_write('storage', roleassign1)
 
 @roleassign.command()
 async def remove(message):
@@ -174,12 +214,9 @@ async def remove(message):
 
 @client.event
 async def on_raw_reaction_add(payload):
-    if payload.channel_id != restrictedTO:
-        return
-    else:
-        if payload.message_id != check_roleassign_message(payload):
-            return
-        else:
+    if payload.message_id == check_roleassign_message(payload) and payload.user_id != client.user.id:
+        storage = json_read('storage')
+        if payload.emoji.name in storage[str(payload.guild_id)]['emojis']:
             guild = client.get_guild(payload.guild_id)#guild = discord.utils.find(lambda g : g.id == payload.guild_id, client.guilds)
             role = discord.utils.get(guild.roles, name=payload.emoji.name)#role = guild.get_role(payload.emoji.name)
             member = guild.get_member(payload.user_id)#member = discord.utils.find(lambda m : m.id == payload.user_id, guild.members)
@@ -187,29 +224,34 @@ async def on_raw_reaction_add(payload):
             #role = guild.get_role(payload.emoji.name)
             #print(payload.member)
             print(guild)
-            print(role)
-            print(member)
-            await member.add_roles(role)
-
-@client.event
-async def on_raw_reaction_remove(payload):
-    if payload.channel_id != restrictedTO:
-        return
-    else:
-        if payload.message_id != check_roleassign_message(payload):
-            return
-        else:
-            guild = client.get_guild(payload.guild_id)#discord.utils.find(lambda g : g.id == payload.guild_id, client.guilds)
-            role = discord.utils.get(guild.roles, name=payload.emoji.name)#role = guild.get_role(payload.emoji.name)
-            #member = discord.utils.find(lambda m : m.id == payload.user_id, guild.members)
-            #member = payload.member
-            #member = guild.get_member(payload.user_id)
-            #role = guild.get_role(payload.emoji.name)
-            member = guild.get_member(payload.user_id)
-            print(guild)
             print(payload.user_id)
             print(member)
-            await member.remove_roles(role)
+            await member.add_roles(role)
+        else:
+            channel = client.get_channel(payload.channel_id)
+            seek = await channel.fetch_message(storage[str(payload.guild_id)]['rolemessage'])
+            guild = client.get_guild(payload.guild_id)
+            #emoji = payload.emoji#discord.utils.get(guild.emojis, name=payload.emoji.name)
+            member = guild.get_member(payload.user_id)
+            await seek.remove_reaction(payload.emoji, member)
+    else:
+        return
+@client.event
+async def on_raw_reaction_remove(payload):
+    if payload.message_id == check_roleassign_message(payload) and payload.user_id == client.user.id:
+        guild = client.get_guild(payload.guild_id)#discord.utils.find(lambda g : g.id == payload.guild_id, client.guilds)
+        role = discord.utils.get(guild.roles, name=payload.emoji.name)#role = guild.get_role(payload.emoji.name)
+        #member = discord.utils.find(lambda m : m.id == payload.user_id, guild.members)
+        #member = payload.member
+        #member = guild.get_member(payload.user_id)
+        #role = guild.get_role(payload.emoji.name)
+        member = guild.get_member(payload.user_id)
+        print(guild)
+        print(payload.user_id)
+        print(member)
+        await member.remove_roles(role)
+    else:
+        return
 
 #------------------------------------------------------------------------------
 @client.command()
@@ -242,12 +284,44 @@ async def purge(ctx, amount=100):
 #------------------------------------------------------------------------------
 #To do
 
+@client.group()
+async def request(ctx):
+    """
+    Command to manage roles
+    """
+    if ctx.invoked_subcommand == None:
+        await ctx.send('Invalid parameters passed, type (PREFIX)help roleassign to find more')
+
+@request.command()
+async def request(ctx):
+    """
+    Command to add a request to assign a role
+    """
+    def check(msg):
+        if msg.author.id == ctx.author.id and msg.channel.id == restrictedTO:
+            print('what the fuck')
+            return True
+    guild = client.get_guild(ctx.guild.id)
+    await ctx.send("please enter the exact name of the role")
+    rolemsg = await client.wait_for('message', check=check)
+    role = discord.utils.get(guild.roles, name=rolemsg.content)
+    await ctx.send("please enter the exact name of the user")
+    usermsg = await client.wait_for('message', check=check)
+    member = guild.get_member(usermsg.content)
+    print(role)
+    print(member)
+
 @client.command()
-async def restrict(ctx):
+async def test(ctx):
+#    roleassign1 = json_read('storage')
+#    print(roleassign1[str(ctx.guild.id)]['emojis'])
+     print(client.user.id)
+
 #    await ctx.send('Plaese type password to change channel restriction')
 #    msg = await client.wait_for('message')
 #    print(msg.content)
-     print(ctx.channel.id)
+#     guild = client.get_guild(ctx.guild.id)
+#     print(guild.members)
 #    if msg.content != password:
 #        return
 #    else:
