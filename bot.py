@@ -109,7 +109,7 @@ async def create(message):
     Command to create roleassign message
     """
     def check(msg):
-        if msg.author.id == message.author.id and msg.channel.id == restrictedTO:
+        if msg.author.id == message.author.id:
             print('what the fuck')
             return True
 
