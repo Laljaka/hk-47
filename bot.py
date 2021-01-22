@@ -245,6 +245,20 @@ async def request(ctx):
 
 @client.command()
 @commands.is_owner()
+async def presence(ctx, status: discord.Status, activity):
+    '''
+    status, ActivityType.activity, presence message
+    '''
+    temp={}
+    temp['watching'] = discord.ActivityType.watching
+    temp['listening'] = discord.ActivityType.listening
+    message = await client.wait_for('message')
+    await client.change_presence(status=status, activity=discord.Activity(type=temp[activity], name=message.content))
+    #print(discord.Status.online)
+    #print(discord.ActivityType.listening)
+
+@client.command()
+@commands.is_owner()
 async def logout(ctx):
     await client.logout()
 

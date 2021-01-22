@@ -1,4 +1,6 @@
 .env
 .replit
 poetry.lock
-pyproject.toml 
+pyproject.toml
+storage.json
+README.md
