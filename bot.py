@@ -249,13 +249,22 @@ async def presence(ctx, status: discord.Status, activity):
     '''
     status, ActivityType.activity, presence message
     '''
-    temp={}
-    temp['watching'] = discord.ActivityType.watching
-    temp['listening'] = discord.ActivityType.listening
+    temp={
+    "watching": discord.ActivityType.watching,
+    "listening": discord.ActivityType.listening,
+    "playing": discord.ActivityType.playing
+    }
     message = await client.wait_for('message')
     await client.change_presence(status=status, activity=discord.Activity(type=temp[activity], name=message.content))
     #print(discord.Status.online)
     #print(discord.ActivityType.listening)
+
+@presence.error
+async def presence_error(ctx, error):
+    if isinstance(error, commands.BadArgument):
+        await ctx.author.send("you fucking idiot")
+    else:
+        raise error
 
 @client.command()
 @commands.is_owner()
