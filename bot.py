@@ -104,8 +104,7 @@ async def add(message):
     Command to add an emoji to roleassign message
     """
     def check(msg):
-        if msg.author.id == message.author.id:
-            print('what the fuck')
+        if msg.author.id == message.author.id and msg.channel.id == message.channel.id:
             return True
     deletable = await message.channel.send("Type the exact name of the role. Please note that there should also be an emoji with exact same name as the role")
     emojirolename = await client.wait_for('message', check=check)
@@ -214,34 +213,58 @@ async def purge(ctx, amount=100):
     await ctx.channel.purge(limit=amount, check=check)
 
 #To do
-'''
+
 @client.group()
 async def request(ctx):
     """
-    Command to manage roles
+    Command to manage the requests to get a role
     """
+    prefix = get_prefix(ctx, ctx.message)
     if ctx.invoked_subcommand == None:
-        await ctx.send('Invalid parameters passed, type (PREFIX)help roleassign to find more')
+        await ctx.send(f'Invalid parameters passed, type {prefix}help roleassign to find more')
 
 @request.command()
-async def request(ctx):
+async def create(ctx):
     """
     Command to add a request to assign a role
     """
     def check(msg):
-        if msg.author.id == ctx.author.id and msg.channel.id == restrictedTO:
-            print('what the fuck')
+        if msg.author.id == ctx.author.id and msg.channel.id == ctx.channel.id:
             return True
+    target_message = json_read('rolerequest')
     guild = client.get_guild(ctx.guild.id)
-    await ctx.send("please enter the exact name of the role")
+    await ctx.send("Please enter the message that will be used as request")
     rolemsg = await client.wait_for('message', check=check)
-    role = discord.utils.get(guild.roles, name=rolemsg.content)
-    await ctx.send("please enter the exact name of the user")
-    usermsg = await client.wait_for('message', check=check)
-    member = guild.get_member(usermsg.content)
-    print(role)
-    print(member)
-'''
+    target_message[str(guild.id)]['message_request'] = rolemsg.id
+    target_message[str(guild.id)]['emoji_request'] = []
+    json_write('rolerequest', target_message)
+
+@request.command()
+async def add(ctx):
+    """
+    Command to add an emoji to rolerequest message
+    """
+    def check(msg):
+        if msg.author.id == ctx.author.id and msg.channel.id == ctx.channel.id:
+            return True
+    deletable = await message.channel.send("Type the exact name of the role. Please note that there should also be an emoji with exact same name as the role")
+    emojirolename = await client.wait_for('message', check=check)
+    guild = client.get_guild(ctx.guild.id)
+    emoji = discord.utils.get(guild.emojis, name=emojirolename.content)
+    role = discord.utils.get(guild.roles, name=emojirolename.content)
+    #print(emoji)
+    #print(role)
+    if emoji != None and role != None:
+        roleassign = json_read('rolerequest')
+        roleassign[str(ctx.guild.id)]['emoji_request'].append(emoji.name)
+        json_write('rolerequest', roleassign)
+        seek = await message.fetch_message(roleassign[str(ctx.guild.id)]['rolemessage'])
+        await seek.add_reaction(emoji)
+        await message.message.delete()
+        await deletable.delete()
+        await emojirolename.delete()
+    else:
+        await message.channel.send('There was an error, please try again')
 
 @client.command()
 @commands.is_owner()
