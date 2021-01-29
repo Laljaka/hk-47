@@ -235,8 +235,8 @@ async def create(ctx):
     guild = client.get_guild(ctx.guild.id)
     await ctx.send("Please enter the message that will be used as request")
     rolemsg = await client.wait_for('message', check=check)
-    target_message[str(guild.id)]['message_request'] = rolemsg.id
-    target_message[str(guild.id)]['emoji_request'] = []
+    target_message[str(guild.id)] = rolemsg.id
+   # target_message[str(guild.id)]['emoji_request'] = []
     json_write('rolerequest', target_message)
 
 @request.command()
@@ -247,7 +247,7 @@ async def add(ctx):
     def check(msg):
         if msg.author.id == ctx.author.id and msg.channel.id == ctx.channel.id:
             return True
-    deletable = await message.channel.send("Type the exact name of the role. Please note that there should also be an emoji with exact same name as the role")
+    deletable = await ctx.channel.send("Type the exact name of the role. Please note that there should also be an emoji with exact same name as the role")
     emojirolename = await client.wait_for('message', check=check)
     guild = client.get_guild(ctx.guild.id)
     emoji = discord.utils.get(guild.emojis, name=emojirolename.content)
@@ -258,13 +258,13 @@ async def add(ctx):
         roleassign = json_read('rolerequest')
         roleassign[str(ctx.guild.id)]['emoji_request'].append(emoji.name)
         json_write('rolerequest', roleassign)
-        seek = await message.fetch_message(roleassign[str(ctx.guild.id)]['rolemessage'])
+        seek = await ctx.fetch_message(roleassign[str(ctx.guild.id)]['rolemessage'])
         await seek.add_reaction(emoji)
-        await message.message.delete()
+        await ctx.message.delete()
         await deletable.delete()
         await emojirolename.delete()
     else:
-        await message.channel.send('There was an error, please try again')
+        await ctx.channel.send('There was an error, please try again')
 
 @client.command()
 @commands.is_owner()
