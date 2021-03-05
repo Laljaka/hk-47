@@ -1,0 +1,32 @@
+{
+    "290888160714686464": {
+        "prefix": "?",
+        "rolemessage": null,
+        "emojis": []
+    },
+    "647080905445212161": {
+        "prefix": ">",
+        "rolemessage": 801605740753190912,
+        "emojis": [
+            "GTA",
+            "Conan",
+            "AssassinsCreed",
+            "Borderlands",
+            "Minecraft",
+            "DND",
+            "SpoilerChat",
+            "TF2",
+            "Battlefront2",
+            "ESO"
+        ]
+    },
+    "720642931526074479": {
+        "prefix": "?",
+        "rolemessage": 801792782011334686,
+        "emojis": [
+            "DPS",
+            "Healer",
+            "Tank"
+        ]
+    }
+}

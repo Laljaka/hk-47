@@ -200,7 +200,7 @@ async def ping(ctx):
     await ctx.send(f'{round(client.latency * 1000)}ms')
 
 @client.command()
-@commands.has_guild_permissions(manage_messages=True)
+@commands.has_guild_permissions(administrator=True)
 @commands.guild_only()
 async def purge(ctx, amount=100):
     """
