@@ -126,6 +126,11 @@ async def add(message):
     else:
         await message.channel.send('There was an error, please try again')
 
+#@client.command()
+#async def dm(ctx):
+    #user=await client.get_user_info("User's ID here")
+#    await ctx.message.author.send("hallo")
+
 
 @roleassign.command()
 async def clear(message):
@@ -149,21 +154,55 @@ async def remove(message):
 @roleassign.command()
 async def remove_exact(ctx, message):
     """
-    Command to remove exact emoji from the list
+    Command to remove exact emoji from the list (must be used in the same chat as the original message)
     """
     roleassign1 = json_read('roleassign')
     if message in roleassign1[str(ctx.guild.id)]['emojis']:
         roleassign1[str(ctx.guild.id)]['emojis'].remove(message)
-        json_write('roleassign', roleassign1)
         seek = await ctx.fetch_message(roleassign1[str(ctx.guild.id)]['rolemessage'])
+        json_write('roleassign', roleassign1)
         guild = client.get_guild(ctx.guild.id)
         emojiz = discord.utils.get(guild.emojis, name=message)
         for reaction in seek.reactions:
-            async for user in reaction.users():
+            #    if reaction.name == emojiz.name:                                   NEED TESTING
+            #        outcome = reaction
+            async for user in reaction.users(): # change reaction to outcome
                 await seek.remove_reaction(emojiz, user)
     else:
-        print("you are retarded")
+        await ctx.author.send('There is no such emoji in the list, please check your spelling')
 
+@remove_exact.error
+async def info(ctx, error):
+    if isinstance(error, commands.errors.CommandInvokeError):
+        await ctx.author.send('I could not find the message in the channel, please use this command in the same channel as the role message')
+    else:
+        print(error)
+
+#discord.ext.commands.errors.CommandInvokeError: Command raised an exception: NotFound: 404 Not Found (error code: 10008): Unknown Message CommandInvokeError
+
+@client.group()
+@commands.has_guild_permissions(administrator=True)
+@commands.guild_only()
+async def insta(ctx):
+    if ctx.invoked_subcommand == None:
+        prefix = get_prefix(ctx, ctx.message)
+        await ctx.send(f'Invalid parameters passed, type {prefix}help insta to find more')
+
+@insta.command()
+async def react(ctx, react_to, *args):
+    seek = await ctx.fetch_message(react_to)
+    guild = client.get_guild(ctx.guild.id)
+    for arg in args:
+        emoji = discord.utils.get(guild.emojis, name=arg)
+        await seek.add_reaction(emoji)
+
+@insta.command()
+async def unreact(ctx, react_to):
+    seek = await ctx.fetch_message(react_to)
+    guild = client.get_guild(ctx.guild.id)
+    member = guild.get_member(client.user.id)
+    for reaction in seek.reactions:
+        await seek.remove_reaction(reaction, member)
 
 #------------------------------------------------------------------------------ ADD TO ANOTHER FILE
 #Commands to add and remove roles by reacting to the message with emojis
@@ -172,9 +211,9 @@ async def on_raw_reaction_add(payload):
     if payload.message_id == check_roleassign_message(payload) and payload.user_id != client.user.id:
         storage = json_read('roleassign')
         if payload.emoji.name in storage[str(payload.guild_id)]['emojis']:
-            guild = client.get_guild(payload.guild_id)#guild = discord.utils.find(lambda g : g.id == payload.guild_id, client.guilds)
-            role = discord.utils.get(guild.roles, name=payload.emoji.name)#role = guild.get_role(payload.emoji.name)
-            member = guild.get_member(payload.user_id)#member = discord.utils.find(lambda m : m.id == payload.user_id, guild.members)
+            guild = client.get_guild(payload.guild_id) #guild = discord.utils.find(lambda g : g.id == payload.guild_id, client.guilds)
+            role = discord.utils.get(guild.roles, name=payload.emoji.name) #role = guild.get_role(payload.emoji.name)
+            member = guild.get_member(payload.user_id) #member = discord.utils.find(lambda m : m.id == payload.user_id, guild.members)
             #member = payload.member
             #role = guild.get_role(payload.emoji.name)
             #print(payload.member)
@@ -233,34 +272,11 @@ async def purge(ctx, amount=100):
     await ctx.channel.purge(limit=amount, check=check)
 
 #To do
-'''
-@client.group()
-async def request(ctx):
-    """
-    Command to manage roles
-    """
-    if ctx.invoked_subcommand == None:
-        await ctx.send('Invalid parameters passed, type (PREFIX)help roleassign to find more')
+@client.event
+async def on_member_remove(member):
+    channel = client.get_channel(653750309058904064)
+    await channel.send(f"User {member.name} left the server")                       #  NEED TESTING
 
-@request.command()
-async def request(ctx):
-    """
-    Command to add a request to assign a role
-    """
-    def check(msg):
-        if msg.author.id == ctx.author.id and msg.channel.id == restrictedTO:
-            print('what the fuck')
-            return True
-    guild = client.get_guild(ctx.guild.id)
-    await ctx.send("please enter the exact name of the role")
-    rolemsg = await client.wait_for('message', check=check)
-    role = discord.utils.get(guild.roles, name=rolemsg.content)
-    await ctx.send("please enter the exact name of the user")
-    usermsg = await client.wait_for('message', check=check)
-    member = guild.get_member(usermsg.content)
-    print(role)
-    print(member)
-'''
 
 @client.command()
 @commands.is_owner()
