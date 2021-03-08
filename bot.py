@@ -274,7 +274,7 @@ async def purge(ctx, amount=100):
 #To do
 @client.event
 async def on_member_remove(member):
-    channel = client.get_channel(797776048782966784)
+    channel = client.get_channel(653750309058904064)
     await channel.send(f"User {member.name} left the server")                       #  NEED TESTING
 
 
