@@ -176,11 +176,31 @@ async def info(ctx, error):
     if isinstance(error, commands.errors.CommandInvokeError):
         await ctx.author.send('I could not find the message in the channel, please use this command in the same channel as the role message')
     else:
-        print("wrong")
         print(error)
-        print(commands.errors.CommandInvokeError)
 
 #discord.ext.commands.errors.CommandInvokeError: Command raised an exception: NotFound: 404 Not Found (error code: 10008): Unknown Message CommandInvokeError
+
+@client.command()
+@commands.has_guild_permissions(administrator=True)
+@commands.guild_only()
+async def insta(ctx):
+if ctx.invoked_subcommand == None:
+    prefix = get_prefix(ctx, ctx.message)
+    await ctx.send(f'Invalid parameters passed, type {prefix}help insta to find more')
+
+@insta.command()
+async def react(ctx, react_to, *args):
+    seek = await ctx.fetch_message(react_to)
+    for arg in args:
+        await seek.add_reaction(arg)
+
+@insta.command()
+async def unreact(ctx, react_to):
+    seek = await ctx.fetch_message(react_to)
+    guild = client.get_guild(ctx.guild.id)
+    member = guild.get_member(client.user.id)
+    for reaction in seek.reactions:
+        await seek.remove_reaction(reaction, member)
 
 #------------------------------------------------------------------------------ ADD TO ANOTHER FILE
 #Commands to add and remove roles by reacting to the message with emojis
@@ -250,9 +270,11 @@ async def purge(ctx, amount=100):
     await ctx.channel.purge(limit=amount, check=check)
 
 #To do
-'''
+@client.event()
+async def on_member_remove(member):
+    channel = client.get_channel(653750309058904064)
+    channel.send(f"User {member.name} left the server")                       #  NEED TESTING
 
-'''
 
 @client.command()
 @commands.is_owner()
