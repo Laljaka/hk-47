@@ -185,13 +185,19 @@ async def info(ctx, error):
 @commands.has_guild_permissions(administrator=True)
 @commands.guild_only()
 async def insta(ctx):
+    """
+    Command to make a bot react to a message with a couple of emojis
+    """
     if ctx.invoked_subcommand == None:
         prefix = get_prefix(ctx, ctx.message)
         await ctx.send(f'Invalid parameters passed, type {prefix}help insta to find more')
 
 @insta.command()
-async def react(ctx, react_to, *args):
-    seek = await ctx.fetch_message(react_to)
+async def react(ctx, *args):
+    """
+    Reply to a message while executing this command
+    """
+    seek = await ctx.fetch_message(ctx.message.reference.message_id)
     guild = client.get_guild(ctx.guild.id)
     for arg in args:
         emoji = discord.utils.get(guild.emojis, name=arg)
@@ -202,8 +208,11 @@ async def react(ctx, react_to, *args):
             await seek.add_reaction(emoji.emoji)
 
 @insta.command()
-async def unreact(ctx, react_to):
-    seek = await ctx.fetch_message(react_to)
+async def unreact(ctx):
+    """
+    Reply to a message while executing this command
+    """
+    seek = await ctx.fetch_message(ctx.message.reference.message_id)
     guild = client.get_guild(ctx.guild.id)
     member = guild.get_member(client.user.id)
     for reaction in seek.reactions:
@@ -269,12 +278,7 @@ async def purge(ctx, amount=100):
     """
     Command to clear messages (100 is default)
     """
-    def check(msg):
-        if msg.id == ctx.message.id:
-            return False
-        else:
-            return True
-    await ctx.channel.purge(limit=amount, check=check)
+    await ctx.channel.purge(limit=amount)
 
 #To do
 @client.event
@@ -295,14 +299,17 @@ async def on_member_remove(member):
 
 @client.command()
 @commands.is_owner()
-async def info(ctx, user: discord.User):
+async def info(ctx, message):
     #guild = client.get_guild(ctx.guild.id)
     #member = guild.get_member(ctx.message.author.id)
 #    print(ctx.message.author.id)
 #    print(type(ctx.message.author.id))
 #    print(user.id)
-    print(dir(user))
-    print(user.created_at)
+    #print(dir(message))
+    #print(dir(ctx))
+    #print(message.reference)
+    print(ctx.message.reference.message_id)
+#    print(user.created_at)
 
 
 @client.command()
