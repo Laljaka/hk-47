@@ -3,6 +3,7 @@ import json
 from discord.ext import commands
 import os
 from dotenv import load_dotenv
+import emojis
 load_dotenv()
 
 #Variables
@@ -194,7 +195,11 @@ async def react(ctx, react_to, *args):
     guild = client.get_guild(ctx.guild.id)
     for arg in args:
         emoji = discord.utils.get(guild.emojis, name=arg)
-        await seek.add_reaction(emoji)
+        if emoji != None:
+            await seek.add_reaction(emoji)
+        else:
+            emoji = emojis.db.get_emoji_by_alias(arg)
+            await seek.add_reaction(emoji.emoji)
 
 @insta.command()
 async def unreact(ctx, react_to):
@@ -276,6 +281,11 @@ async def purge(ctx, amount=100):
 async def on_member_remove(member):
     channel = client.get_channel(653750309058904064)
     await channel.send(f"User {member.name} left the server")                       #  NEED TESTING
+
+@client.command()
+@commands.is_owner()
+async def info(ctx, member):
+    print(member)
 
 
 @client.command()
