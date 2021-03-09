@@ -3,6 +3,7 @@ import json
 from discord.ext import commands
 import os
 from dotenv import load_dotenv
+import emojis
 load_dotenv()
 
 #Variables
@@ -194,7 +195,11 @@ async def react(ctx, react_to, *args):
     guild = client.get_guild(ctx.guild.id)
     for arg in args:
         emoji = discord.utils.get(guild.emojis, name=arg)
-        await seek.add_reaction(emoji)
+        if emoji != None:
+            await seek.add_reaction(emoji)
+        else:
+            emoji = emojis.db.get_emoji_by_alias(arg)
+            await seek.add_reaction(emoji.emoji)
 
 @insta.command()
 async def unreact(ctx, react_to):
@@ -273,9 +278,31 @@ async def purge(ctx, amount=100):
 
 #To do
 @client.event
+async def on_member_join(member):
+    if member.guild.id == 647080905445212161:
+        channel = client.get_channel(657215938105442315)
+    elif member.guild.id == 290888160714686464:
+        channel = client.get_channel(797776048782966784)
+    await channel.send(f"User <@{member.id}> joined the server.\nTheir account was created at {member.created_at}")                       #  NEED TESTING
+
+@client.event
 async def on_member_remove(member):
-    channel = client.get_channel(653750309058904064)
-    await channel.send(f"User {member.name} left the server")                       #  NEED TESTING
+    if member.guild.id == 647080905445212161:
+        channel = client.get_channel(657215938105442315)
+    elif member.guild.id == 290888160714686464:
+        channel = client.get_channel(797776048782966784)
+    await channel.send(f"User <@{member.id}> left the server")
+
+@client.command()
+@commands.is_owner()
+async def info(ctx, user: discord.User):
+    #guild = client.get_guild(ctx.guild.id)
+    #member = guild.get_member(ctx.message.author.id)
+#    print(ctx.message.author.id)
+#    print(type(ctx.message.author.id))
+#    print(user.id)
+    print(dir(user))
+    print(user.created_at)
 
 
 @client.command()
