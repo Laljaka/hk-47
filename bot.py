@@ -197,26 +197,34 @@ async def react(ctx, *args):
     """
     Reply to a message while executing this command
     """
-    seek = await ctx.fetch_message(ctx.message.reference.message_id)
-    guild = client.get_guild(ctx.guild.id)
-    for arg in args:
-        emoji = discord.utils.get(guild.emojis, name=arg)
-        if emoji != None:
-            await seek.add_reaction(emoji)
-        else:
-            emoji = emojis.db.get_emoji_by_alias(arg)
-            await seek.add_reaction(emoji.emoji)
+    roleassign1 = json_read('roleassign')
+    if ctx.message.reference.message_id != roleassign1[str(ctx.guild.id)]['rolemessage']:
+        seek = await ctx.fetch_message(ctx.message.reference.message_id)
+        guild = client.get_guild(ctx.guild.id)
+        for arg in args:
+            emoji = discord.utils.get(guild.emojis, name=arg)
+            if emoji != None:
+                await seek.add_reaction(emoji)
+            else:
+                emoji = emojis.db.get_emoji_by_alias(arg)
+                await seek.add_reaction(emoji.emoji)
+    else:
+        await ctx.author.send("You cheeky bastard, you can't do that")
 
 @insta.command()
 async def unreact(ctx):
     """
     Reply to a message while executing this command
     """
-    seek = await ctx.fetch_message(ctx.message.reference.message_id)
-    guild = client.get_guild(ctx.guild.id)
-    member = guild.get_member(client.user.id)
-    for reaction in seek.reactions:
-        await seek.remove_reaction(reaction, member)
+    roleassign1 = json_read('roleassign')
+    if ctx.message.reference.message_id != roleassign1[str(ctx.guild.id)]['rolemessage']:
+        seek = await ctx.fetch_message(ctx.message.reference.message_id)
+        guild = client.get_guild(ctx.guild.id)
+        member = guild.get_member(client.user.id)
+        for reaction in seek.reactions:
+            await seek.remove_reaction(reaction, member)
+    else:
+        await ctx.author.send("You cheeky bastard, you can't do that")
 
 #------------------------------------------------------------------------------ ADD TO ANOTHER FILE
 #Commands to add and remove roles by reacting to the message with emojis
