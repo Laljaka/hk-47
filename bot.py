@@ -208,8 +208,10 @@ async def react(ctx, *args):
             else:
                 emoji = emojis.db.get_emoji_by_alias(arg)
                 await seek.add_reaction(emoji.emoji)
+        await ctx.message.delete()
     else:
         await ctx.author.send("You cheeky bastard, you can't do that")
+        await ctx.message.delete()
 
 @insta.command()
 async def unreact(ctx):
@@ -223,8 +225,10 @@ async def unreact(ctx):
         member = guild.get_member(client.user.id)
         for reaction in seek.reactions:
             await seek.remove_reaction(reaction, member)
+        await ctx.message.delete()
     else:
         await ctx.author.send("You cheeky bastard, you can't do that")
+        await ctx.message.delete()
 
 #------------------------------------------------------------------------------ ADD TO ANOTHER FILE
 #Commands to add and remove roles by reacting to the message with emojis
