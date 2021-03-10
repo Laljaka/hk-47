@@ -292,6 +292,25 @@ async def purge(ctx, amount=100):
     """
     await ctx.channel.purge(limit=amount)
 
+@client.command()
+@commands.has_guild_permissions(administrator=True)
+@commands.guild_only()
+async def forceban(ctx, id, reason="Not specified", days=0):
+    """
+    Bans user if he is not on th server
+    Usage: {prefix}forceban id reason(optional) days(how many messages to delete(optional))
+    """
+    await client.http.ban(id, ctx.guild.id, reason=reason, delete_message_days=days)
+    await ctx.author.send(f"User <@{id}> has been banned")
+
+@forceban.error
+async def info(ctx, error):
+    if isinstance(error, discord.Forbidden):
+        await ctx.author.send("Something went wrong")                                                           #prbs unneessary
+    else:
+        raise error
+
+
 #To do
 @client.event
 async def on_member_join(member):
