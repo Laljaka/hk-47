@@ -208,8 +208,10 @@ async def react(ctx, *args):
             else:
                 emoji = emojis.db.get_emoji_by_alias(arg)
                 await seek.add_reaction(emoji.emoji)
+        await ctx.message.delete()
     else:
         await ctx.author.send("You cheeky bastard, you can't do that")
+        await ctx.message.delete()
 
 @insta.command()
 async def unreact(ctx):
@@ -223,8 +225,10 @@ async def unreact(ctx):
         member = guild.get_member(client.user.id)
         for reaction in seek.reactions:
             await seek.remove_reaction(reaction, member)
+        await ctx.message.delete()
     else:
         await ctx.author.send("You cheeky bastard, you can't do that")
+        await ctx.message.delete()
 
 #------------------------------------------------------------------------------ ADD TO ANOTHER FILE
 #Commands to add and remove roles by reacting to the message with emojis
@@ -287,6 +291,25 @@ async def purge(ctx, amount=100):
     Command to clear messages (100 is default)
     """
     await ctx.channel.purge(limit=amount)
+
+@client.command()
+@commands.has_guild_permissions(administrator=True)
+@commands.guild_only()
+async def forceban(ctx, id, reason="Not specified", days=0):
+    """
+    Bans user if he is not on th server
+    Usage: {prefix}forceban id reason(optional) days(how many messages to delete(optional))
+    """
+    await client.http.ban(id, ctx.guild.id, reason=reason, delete_message_days=days)
+    await ctx.author.send(f"User <@{id}> has been banned")
+
+@forceban.error
+async def info(ctx, error):
+    if isinstance(error, discord.Forbidden):
+        await ctx.author.send("Something went wrong")                                                           #prbs unneessary
+    else:
+        raise error
+
 
 #To do
 @client.event
