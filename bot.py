@@ -173,7 +173,7 @@ async def remove_exact(ctx, message):
         await ctx.author.send('There is no such emoji in the list, please check your spelling')
 
 @remove_exact.error
-async def info(ctx, error):
+async def infof(ctx, error):
     if isinstance(error, commands.errors.CommandInvokeError):
         await ctx.author.send('I could not find the message in the channel, please use this command in the same channel as the role message')
     else:
@@ -304,21 +304,34 @@ async def forceban(ctx, id, reason="Not specified", days=0):
     await ctx.author.send(f"User <@{id}> has been banned")
 
 @forceban.error
-async def info(ctx, error):
+async def infog(ctx, error):
     if isinstance(error, discord.Forbidden):
         await ctx.author.send("Something went wrong")                                                           #prbs unneessary
     else:
         raise error
 
+@client.command()
+@commands.has_guild_permissions(administrator=True)
+@commands.guild_only()
+async def user_info_setup(ctx, channel: discord.TextChannel): 
+    channels = json_read('storage/channels')
+    channels[str(ctx.guild.id)] = str(channel.id)
+    json_write('storage/channels', channels)
+
+@user_info_setup.error
+async def notfound(ctx, error):
+    if isinstance(error, commands.errors.ChannelNotFound):
+        await ctx.author.send("Please mention a channel.") 
+    else:
+        raise error
 
 #To do
 @client.event
 async def on_member_join(member):
-    if member.guild.id == 647080905445212161:
-        channel = client.get_channel(657215938105442315)
-    elif member.guild.id == 290888160714686464:
-        channel = client.get_channel(797776048782966784)
-    await channel.send(f"User <@{member.id}> joined the server.\nTheir account was created at {member.created_at}")                       #  NEED TESTING
+    channel_raw = json_read('storage/channels')
+    channel = member.guild.get_channel(channel_raw[str(member.guild.id)])
+    if channel != None:
+      await channel.send(f"User <@{member.id}> joined the server.\nTheir account was created at {member.created_at}")                       #  NEED TESTING
 
 @client.event
 async def on_member_remove(member):
