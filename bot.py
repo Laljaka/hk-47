@@ -10,7 +10,6 @@ load_dotenv()
 #Variables
 intents = discord.Intents.default()
 intents.members = True
-restrictedTO = 798456032358694912
 
 #stuff
 def json_read(filename):
@@ -23,14 +22,14 @@ def json_write(filename, data):
         json.dump(data, f, indent =4)
 
 def get_prefix(client, message):
-    prefixes = json_read('prefix')
+    prefixes = json_read('storage/prefix')
     return prefixes[str(message.guild.id)]
 
 
 client = commands.Bot(command_prefix = get_prefix, intents = intents)
 
 def check_roleassign_message(payload):
-    roleassign1 = json_read('roleassign')
+    roleassign1 = json_read('storage/roleassign')
     return roleassign1[str(payload.guild_id)]['rolemessage']
 
 #Ready check
@@ -42,19 +41,19 @@ async def on_ready():
 #Joining the server and creating a prefix in json file
 @client.event
 async def on_guild_join(guild):
-    prefixes = json_read('prefix')
+    prefixes = json_read('storage/prefix')
     prefixes[str(guild.id)] = '?'
-    json_write('prefix', prefixes)
+    json_write('storage/prefix', prefixes)
 
 #Leaving the server and removing the prefix
 @client.event
 async def on_guild_remove(guild):
-    prefixes = json_read('prefix')
+    prefixes = json_read('storage/prefix')
     prefixes.pop(str(guild.id))
-    json_write('prefix', prefixes)
-    prefixes = json_read('roleassign')
+    json_write('storage/prefix', prefixes)
+    prefixes = json_read('storage/roleassign')
     prefixes.pop(str(guild.id))
-    json_write('roleassign', prefixes)
+    json_write('storage/roleassign', prefixes)
 
 #------------------------------------------------------------------------------
 @client.command()
@@ -64,9 +63,9 @@ async def changeprefix(ctx, prefix):
     """
     Command to change bot prefix
     """
-    prefixes = json_read('prefix')
+    prefixes = json_read('storage/prefix')
     prefixes[str(ctx.guild.id)] = prefix
-    json_write('prefix', prefixes)
+    json_write('storage/prefix', prefixes)
     await ctx.send(f'Prefix changed to {prefix}')
 
 #------------------------------------------------------------------------------
@@ -91,11 +90,11 @@ async def create(message):
             print('what the fuck')
             return True
 
-    roleassign1 = json_read('roleassign')
+    roleassign1 = json_read('storage/roleassign')
     deletable = await message.channel.send('Please send the message')
     msgtorole = await client.wait_for('message', check=check)
     roleassign1[str(message.guild.id)] = {'rolemessage': msgtorole.id, 'emojis': []}
-    json_write('roleassign', roleassign1)
+    json_write('storage/roleassign', roleassign1)
     await message.message.delete()
     await deletable.delete()
     #await message.channel.purge(limit=6, check=chek2)
@@ -117,9 +116,9 @@ async def add(message):
     #print(emoji)
     #print(role)
     if emoji != None and role != None:
-        roleassign = json_read('roleassign')
+        roleassign = json_read('storage/roleassign')
         roleassign[str(message.guild.id)]['emojis'].append(emoji.name)
-        json_write('roleassign', roleassign)
+        json_write('storage/roleassign', roleassign)
         seek = await message.fetch_message(roleassign[str(message.guild.id)]['rolemessage'])
         await seek.add_reaction(emoji)
         await message.message.delete()
@@ -139,30 +138,30 @@ async def clear(message):
     """
     Command to clear emojis under roleassign message
     """
-    roleassign1 = json_read('roleassign')
+    roleassign1 = json_read('storage/roleassign')
     roleassign1[str(message.guild.id)]['emojis'] = []
-    json_write('roleassign', roleassign1)
+    json_write('storage/roleassign', roleassign1)
 
 @roleassign.command()
 async def remove(message):
     """
     Command to remove roleassign message
     """
-    roleassign1 = json_read('roleassign')
+    roleassign1 = json_read('storage/roleassign')
     roleassign1[str(message.guild.id)]['rolemessage'] = None
     roleassign1[str(message.guild.id)]['emojis'] = []
-    json_write('roleassign', roleassign1)
+    json_write('storage/roleassign', roleassign1)
 
 @roleassign.command()
 async def remove_exact(ctx, message):
     """
     Command to remove exact emoji from the list (must be used in the same chat as the original message)
     """
-    roleassign1 = json_read('roleassign')
+    roleassign1 = json_read('storage/roleassign')
     if message in roleassign1[str(ctx.guild.id)]['emojis']:
         roleassign1[str(ctx.guild.id)]['emojis'].remove(message)
         seek = await ctx.fetch_message(roleassign1[str(ctx.guild.id)]['rolemessage'])
-        json_write('roleassign', roleassign1)
+        json_write('storage/roleassign', roleassign1)
         guild = client.get_guild(ctx.guild.id)
         emojiz = discord.utils.get(guild.emojis, name=message)
         for reaction in seek.reactions:
@@ -198,7 +197,7 @@ async def react(ctx, *args):
     """
     Reply to a message while executing this command
     """
-    roleassign1 = json_read('roleassign')
+    roleassign1 = json_read('storage/roleassign')
     if ctx.message.reference.message_id != roleassign1[str(ctx.guild.id)]['rolemessage']:
         seek = await ctx.fetch_message(ctx.message.reference.message_id)
         guild = client.get_guild(ctx.guild.id)
@@ -219,7 +218,7 @@ async def unreact(ctx):
     """
     Reply to a message while executing this command
     """
-    roleassign1 = json_read('roleassign')
+    roleassign1 = json_read('storage/roleassign')
     if ctx.message.reference.message_id != roleassign1[str(ctx.guild.id)]['rolemessage']:
         seek = await ctx.fetch_message(ctx.message.reference.message_id)
         guild = client.get_guild(ctx.guild.id)
@@ -236,7 +235,7 @@ async def unreact(ctx):
 @client.event
 async def on_raw_reaction_add(payload):
     if payload.message_id == check_roleassign_message(payload) and payload.user_id != client.user.id:
-        storage = json_read('roleassign')
+        storage = json_read('storage/roleassign')
         if payload.emoji.name in storage[str(payload.guild_id)]['emojis']:
             guild = client.get_guild(payload.guild_id) #guild = discord.utils.find(lambda g : g.id == payload.guild_id, client.guilds)
             role = discord.utils.get(guild.roles, name=payload.emoji.name) #role = guild.get_role(payload.emoji.name)
