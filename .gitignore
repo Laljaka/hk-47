@@ -2,4 +2,3 @@
 .replit
 poetry.lock
 pyproject.toml
-prefix.json
