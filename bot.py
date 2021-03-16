@@ -4,6 +4,7 @@ from discord.ext import commands
 import os
 from dotenv import load_dotenv
 import emojis
+#from datetime import datetime
 load_dotenv()
 
 #Variables
@@ -173,7 +174,7 @@ async def remove_exact(ctx, message):
         await ctx.author.send('There is no such emoji in the list, please check your spelling')
 
 @remove_exact.error
-async def info(ctx, error):
+async def infof(ctx, error):
     if isinstance(error, commands.errors.CommandInvokeError):
         await ctx.author.send('I could not find the message in the channel, please use this command in the same channel as the role message')
     else:
@@ -295,52 +296,83 @@ async def purge(ctx, amount=100):
 @client.command()
 @commands.has_guild_permissions(administrator=True)
 @commands.guild_only()
-async def forceban(ctx, id, reason="Not specified", days=0):
+async def forceban(ctx, reason="Not specified", *ids):
     """
-    Bans user if he is not on th server
-    Usage: {prefix}forceban id reason(optional) days(how many messages to delete(optional))
+    Bans user if he is not on the server
+    Usage: {prefix}forceban "reason"(optional) id, id, id etc...
     """
-    await client.http.ban(id, ctx.guild.id, reason=reason, delete_message_days=days)
-    await ctx.author.send(f"User <@{id}> has been banned")
+    for id in ids:
+        await client.http.ban(id, ctx.guild.id, reason=reason, delete_message_days=0)
+        await ctx.author.send(f"User <@{id}> has been banned")
 
 @forceban.error
-async def info(ctx, error):
+async def infog(ctx, error):
     if isinstance(error, discord.Forbidden):
         await ctx.author.send("Something went wrong")                                                           #prbs unneessary
     else:
         raise error
 
+@client.command()
+@commands.has_guild_permissions(administrator=True)
+@commands.guild_only()
+async def user_info_setup(ctx, channel: discord.TextChannel):
+    channels = json_read('storage/channels')
+    channels[str(ctx.guild.id)] = channel.id
+    json_write('storage/channels', channels)
+
+@user_info_setup.error
+async def notfound(ctx, error):
+    if isinstance(error, commands.errors.ChannelNotFound):
+        await ctx.author.send("Please mention a channel.")
+    else:
+        raise error
 
 #To do
 @client.event
 async def on_member_join(member):
-    if member.guild.id == 647080905445212161:
-        channel = client.get_channel(657215938105442315)
-    elif member.guild.id == 290888160714686464:
-        channel = client.get_channel(797776048782966784)
-    await channel.send(f"User <@{member.id}> joined the server.\nTheir account was created at {member.created_at}")                       #  NEED TESTING
+    channel_raw = json_read('storage/channels')
+    channel = member.guild.get_channel(channel_raw[str(member.guild.id)])
+    if channel != None:
+        #await channel.send(f"User <@{member.id}> joined the server.\nTheir account was created at {member.created_at}")                       #  NEED TESTING
+        embed=discord.Embed(
+        title="User joined",
+        #url="https://realdrewdata.medium.com/",
+        #description="Here are some ways to format text",
+        color=discord.Color.green())
+        #embed.set_author(name=f"{member.display_name}#{member.discriminator}", icon_url=f"{member.avatar_url}")
+        #embed.set_author(name=ctx.author.display_name, url="https://twitter.com/RealDrewData", icon_url=ctx.author.avatar_url)
+        #embed.set_thumbnail(url="https://i.imgur.com/axLm3p6.jpeg")
+        embed.set_thumbnail(url=member.avatar_url)
+        embed.add_field(name="User name", value=f"{member.display_name}#{member.discriminator}", inline=False)
+        embed.add_field(name="User link", value=f"{member.mention}", inline=False)
+        embed.add_field(name="User id", value=f"{member.id}", inline=False)
+        embed.add_field(name="Account created", value=f"{member.created_at.strftime('%d %b %Y at %H:%M')}", inline=False)
+        #embed.set_footer(text="Learn more here: realdrewdata.medium.com")
+        await channel.send(embed=embed)
 
 @client.event
 async def on_member_remove(member):
-    if member.guild.id == 647080905445212161:
-        channel = client.get_channel(657215938105442315)
-    elif member.guild.id == 290888160714686464:
-        channel = client.get_channel(797776048782966784)
-    await channel.send(f"User <@{member.id}> left the server")
+    channel_raw = json_read('storage/channels')
+    channel = member.guild.get_channel(channel_raw[str(member.guild.id)])
+    if channel != None:
+        #await channel.send(f"User <@{member.id}> left the server")
+        embed=discord.Embed(
+        title="User left",
+        color=discord.Color.red())
+        #embed.set_author(name=f"{member.display_name}#{member.discriminator}", icon_url=f"{member.avatar_url}")
+        embed.set_thumbnail(url=member.avatar_url)
+        embed.add_field(name="User name", value=f"{member.display_name}#{member.discriminator}", inline=False)
+        embed.add_field(name="User link", value=f"{member.mention}", inline=False)
+        embed.add_field(name="User id", value=f"{member.id}", inline=False)
+        embed.add_field(name="Joined the server", value=f"{member.joined_at.strftime('%d %b %Y at %H:%M')}", inline=False)
+        await channel.send(embed=embed)
 
 @client.command()
 @commands.is_owner()
-async def info(ctx, message):
-    #guild = client.get_guild(ctx.guild.id)
-    #member = guild.get_member(ctx.message.author.id)
-#    print(ctx.message.author.id)
-#    print(type(ctx.message.author.id))
-#    print(user.id)
-    #print(dir(message))
-    #print(dir(ctx))
-    #print(message.reference)
-    print(ctx.message.reference.message_id)
-#    print(user.created_at)
+async def info(ctx, member: discord.Member):
+    datestring = member.created_at.strftime('%d %b %y %H:%M')
+    print(datestring)
+
 
 
 @client.command()
