@@ -296,13 +296,14 @@ async def purge(ctx, amount=100):
 @client.command()
 @commands.has_guild_permissions(administrator=True)
 @commands.guild_only()
-async def forceban(ctx, id, reason="Not specified", days=0):
+async def forceban(ctx, reason="Not specified", *ids):
     """
-    Bans user if he is not on th server
-    Usage: {prefix}forceban id reason(optional) days(how many messages to delete(optional))
+    Bans user if he is not on the server
+    Usage: {prefix}forceban "reason"(optional) id, id, id etc...
     """
-    await client.http.ban(id, ctx.guild.id, reason=reason, delete_message_days=days)
-    await ctx.author.send(f"User <@{id}> has been banned")
+    for id in ids:
+        await client.http.ban(id, ctx.guild.id, reason=reason, delete_message_days=0)
+        await ctx.author.send(f"User <@{id}> has been banned")
 
 @forceban.error
 async def infog(ctx, error):
