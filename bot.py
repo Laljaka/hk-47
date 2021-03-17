@@ -44,6 +44,12 @@ async def on_guild_join(guild):
     prefixes = json_read('prefix')
     prefixes[str(guild.id)] = '?'
     json_write('prefix', prefixes)
+    prefixes = json_read('roleassign')
+    roleassign1[str(message.guild.id)] = {'rolemessage': None, 'emojis': []}
+    json_write('roleassign', prefixes)
+    prefixes = json_read('channels')
+    prefixes[str(guild.id)] = None
+    json_write('channels', prefixes)
 
 #Leaving the server and removing the prefix
 @client.event
@@ -54,6 +60,9 @@ async def on_guild_remove(guild):
     prefixes = json_read('roleassign')
     prefixes.pop(str(guild.id))
     json_write('roleassign', prefixes)
+    prefixes = json_read('channels')
+    prefixes.pop(str(guild.id))
+    json_write('channels', prefixes)
 
 #------------------------------------------------------------------------------
 @client.command()
@@ -93,7 +102,7 @@ async def create(message):
     roleassign1 = json_read('roleassign')
     deletable = await message.channel.send('Please send the message')
     msgtorole = await client.wait_for('message', check=check)
-    roleassign1[str(message.guild.id)] = {'rolemessage': msgtorole.id, 'emojis': []}
+    roleassign1[str(message.guild.id)]['rolemessage'] = msgtorole.id
     json_write('roleassign', roleassign1)
     await message.message.delete()
     await deletable.delete()
@@ -330,9 +339,8 @@ async def notfound(ctx, error):
 @client.event
 async def on_member_join(member):
     channel_raw = json_read('channels')
-    try:
-        channel = member.guild.get_channel(channel_raw[str(member.guild.id)])
-    except LookupError:
+    channel = member.guild.get_channel(channel_raw[str(member.guild.id)])
+    if channel == None:
         print("DEV:    on_member_join:    Channel wasn't found in json")
     else:
         #await channel.send(f"User <@{member.id}> joined the server.\nTheir account was created at {member.created_at}")                       #  NEED TESTING
@@ -355,9 +363,8 @@ async def on_member_join(member):
 @client.event
 async def on_member_remove(member):
     channel_raw = json_read('channels')
-    try:
-        channel = member.guild.get_channel(channel_raw[str(member.guild.id)])
-    except LookupError:
+    channel = member.guild.get_channel(channel_raw[str(member.guild.id)])
+    if channel == None:
         print("DEV:    on_member_remove:     Channel wasn't found in json")
     else:
         #await channel.send(f"User <@{member.id}> left the server")
