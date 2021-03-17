@@ -45,7 +45,7 @@ async def on_guild_join(guild):
     prefixes[str(guild.id)] = '?'
     json_write('prefix', prefixes)
     prefixes = json_read('roleassign')
-    roleassign1[str(message.guild.id)] = {'rolemessage': None, 'emojis': []}
+    roleassign1[str(guild.id)] = {'rolemessage': None, 'emojis': []}
     json_write('roleassign', prefixes)
     prefixes = json_read('channels')
     prefixes[str(guild.id)] = None
