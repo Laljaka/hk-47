@@ -3,7 +3,7 @@ import json
 from discord.ext import commands
 import os
 from dotenv import load_dotenv
-import emojis
+#import emojis
 #from datetime import datetime
 load_dotenv()
 
@@ -150,6 +150,7 @@ async def clear(message):
     roleassign1 = json_read('roleassign')
     roleassign1[str(message.guild.id)]['emojis'] = []
     json_write('roleassign', roleassign1)
+    await message.channel.send("Succesfully cleared list of emojis from the database")
 
 @roleassign.command()
 async def remove(message):
@@ -160,6 +161,7 @@ async def remove(message):
     roleassign1[str(message.guild.id)]['rolemessage'] = None
     roleassign1[str(message.guild.id)]['emojis'] = []
     json_write('roleassign', roleassign1)
+    await message.channel.send("Succesfully removed roleassign message from the database")
 
 @roleassign.command()
 async def remove_exact(ctx, message):
@@ -211,15 +213,10 @@ async def react(ctx, *args):
         seek = await ctx.fetch_message(ctx.message.reference.message_id)
         guild = client.get_guild(ctx.guild.id)
         for arg in args:
-            emoji = discord.utils.get(guild.emojis, name=arg)
-            if emoji != None:
-                await seek.add_reaction(emoji)
-            else:
-                emoji = emojis.db.get_emoji_by_alias(arg)
-                await seek.add_reaction(emoji.emoji)
+            await seek.add_reaction(arg)
         await ctx.message.delete()
     else:
-        await ctx.author.send("You cheeky bastard, you can't do that")
+        await ctx.author.send("Please do not mix this command with roleassign related message")
         await ctx.message.delete()
 
 @insta.command()
@@ -236,7 +233,7 @@ async def unreact(ctx):
             await seek.remove_reaction(reaction, member)
         await ctx.message.delete()
     else:
-        await ctx.author.send("You cheeky bastard, you can't do that")
+        await ctx.author.send("Please do not mix this command with roleassign related message")
         await ctx.message.delete()
 
 #------------------------------------------------------------------------------ ADD TO ANOTHER FILE
@@ -252,10 +249,8 @@ async def on_raw_reaction_add(payload):
             #member = payload.member
             #role = guild.get_role(payload.emoji.name)
             #print(payload.member)
-            print(guild)
-            print(payload.user_id)
-            print(member)
             await member.add_roles(role)
+            print(f"DEV:    on_raw_reaction_add:    Succesfully added role {role.name} to user {member.display_name} on the server {guild.name}")
         else:
             channel = client.get_channel(payload.channel_id)
             seek = await channel.fetch_message(storage[str(payload.guild_id)]['rolemessage'])
@@ -263,6 +258,7 @@ async def on_raw_reaction_add(payload):
             #emoji = payload.emoji#discord.utils.get(guild.emojis, name=payload.emoji.name)
             member = guild.get_member(payload.user_id)
             await seek.remove_reaction(payload.emoji, member)
+            print(f"DEV:    on_raw_reaction_add:    User {member.display_name} tried adding {payload.emoji.name} on the server {guild.name} which was not allowed under this message")
     else:
         return
 
@@ -277,10 +273,8 @@ async def on_raw_reaction_remove(payload):
             #member = guild.get_member(payload.user_id)
             #role = guild.get_role(payload.emoji.name)
             member = guild.get_member(payload.user_id)
-            print(guild)
-            print(payload.user_id)
-            print(member)
             await member.remove_roles(role)
+            print(f"DEV:    on_raw_reaction_remove:    Succesfully removed role {role.name} from user {member.display_name} on the server {guild.name}")
         else:
             return
 
@@ -299,7 +293,22 @@ async def purge(ctx, amount=100):
     """
     Command to clear messages (100 is default)
     """
-    await ctx.channel.purge(limit=amount)
+    def check(reaction, user):
+        if user == ctx.author:
+            if reaction.emoji == u'\U0001F7E2' or reaction.emoji == u'\U0001F534':
+                return True
+
+    if amount > 20:
+        target = await ctx.channel.send(f"Are you sure you want to delete {amount} messages?")
+        await target.add_reaction('\U0001F7E2')
+        await target.add_reaction('\U0001F534')
+        reaction, user = await client.wait_for('reaction_add', timeout=60.0, check=check)
+        if reaction.emoji == '\U0001F7E2':
+            await ctx.channel.purge(limit=amount+2)
+        if reaction.emoji == '\U0001F534':
+            return
+    else:
+        await ctx.channel.purge(limit=amount+1)
 
 @client.command()
 @commands.has_guild_permissions(administrator=True)
@@ -339,50 +348,58 @@ async def notfound(ctx, error):
 @client.event
 async def on_member_join(member):
     channel_raw = json_read('channels')
-    channel = member.guild.get_channel(channel_raw[str(member.guild.id)])
-    if channel == None:
-        print("DEV:    on_member_join:    Channel wasn't found in json")
+    guild = client.get_guild(member.guild.id)
+    if guild == None:
+        print("DEV:    on_member_join:    Guild was not found by it's id")
     else:
-        #await channel.send(f"User <@{member.id}> joined the server.\nTheir account was created at {member.created_at}")                       #  NEED TESTING
-        embed=discord.Embed(
-        title="User joined",
-        #url="https://realdrewdata.medium.com/",
-        #description="Here are some ways to format text",
-        color=discord.Color.green())
-        #embed.set_author(name=f"{member.display_name}#{member.discriminator}", icon_url=f"{member.avatar_url}")
-        #embed.set_author(name=ctx.author.display_name, url="https://twitter.com/RealDrewData", icon_url=ctx.author.avatar_url)
-        #embed.set_thumbnail(url="https://i.imgur.com/axLm3p6.jpeg")
-        embed.set_thumbnail(url=member.avatar_url)
-        embed.add_field(name="User name", value=f"{member.display_name}#{member.discriminator}", inline=False)
-        embed.add_field(name="User link", value=f"{member.mention}", inline=False)
-        embed.add_field(name="User id", value=f"{member.id}", inline=False)
-        embed.add_field(name="Account created", value=f"{member.created_at.strftime('%d %b %Y at %H:%M')}", inline=False)
-        #embed.set_footer(text="Learn more here: realdrewdata.medium.com")
-        await channel.send(embed=embed)
+        channel = guild.get_channel(channel_raw[str(member.guild.id)])
+        if channel == None:
+            print("DEV:    on_member_join:    Channel wasn't found in json")
+        else:
+            #await channel.send(f"User <@{member.id}> joined the server.\nTheir account was created at {member.created_at}")                       #  NEED TESTING
+            embed=discord.Embed(
+            title="User joined",
+            #url="https://realdrewdata.medium.com/",
+            #description="Here are some ways to format text",
+            color=discord.Color.green())
+            #embed.set_author(name=f"{member.display_name}#{member.discriminator}", icon_url=f"{member.avatar_url}")
+            #embed.set_author(name=ctx.author.display_name, url="https://twitter.com/RealDrewData", icon_url=ctx.author.avatar_url)
+            #embed.set_thumbnail(url="https://i.imgur.com/axLm3p6.jpeg")
+            embed.set_thumbnail(url=member.avatar_url)
+            embed.add_field(name="User name", value=f"{member.display_name}#{member.discriminator}", inline=False)
+            embed.add_field(name="User link", value=f"{member.mention}", inline=False)
+            embed.add_field(name="User id", value=f"{member.id}", inline=False)
+            embed.add_field(name="Account created", value=f"{member.created_at.strftime('%d %b %Y at %H:%M')}", inline=False)
+            #embed.set_footer(text="Learn more here: realdrewdata.medium.com")
+            await channel.send(embed=embed)
 
 @client.event
 async def on_member_remove(member):
     channel_raw = json_read('channels')
-    channel = member.guild.get_channel(channel_raw[str(member.guild.id)])
-    if channel == None:
-        print("DEV:    on_member_remove:     Channel wasn't found in json")
+    guild = client.get_guild(member.guild.id)
+    if guild == None:
+        print("DEV:    on_member_remove:     Guild was not found by it's id")
     else:
-        #await channel.send(f"User <@{member.id}> left the server")
-        embed=discord.Embed(
-        title="User left",
-        color=discord.Color.red())
-        #embed.set_author(name=f"{member.display_name}#{member.discriminator}", icon_url=f"{member.avatar_url}")
-        embed.set_thumbnail(url=member.avatar_url)
-        embed.add_field(name="User name", value=f"{member.display_name}#{member.discriminator}", inline=False)
-        embed.add_field(name="User link", value=f"{member.mention}", inline=False)
-        embed.add_field(name="User id", value=f"{member.id}", inline=False)
-        embed.add_field(name="Joined the server", value=f"{member.joined_at.strftime('%d %b %Y at %H:%M')}", inline=False)
-        await channel.send(embed=embed)
+        channel = guild.get_channel(channel_raw[str(member.guild.id)])
+        if channel == None:
+            print("DEV:    on_member_remove:     Channel wasn't found in json")
+        else:
+            #await channel.send(f"User <@{member.id}> left the server")
+            embed=discord.Embed(
+            title="User left",
+            color=discord.Color.red())
+            #embed.set_author(name=f"{member.display_name}#{member.discriminator}", icon_url=f"{member.avatar_url}")
+            embed.set_thumbnail(url=member.avatar_url)
+            embed.add_field(name="User name", value=f"{member.display_name}#{member.discriminator}", inline=False)
+            embed.add_field(name="User link", value=f"{member.mention}", inline=False)
+            embed.add_field(name="User id", value=f"{member.id}", inline=False)
+            embed.add_field(name="Joined the server", value=f"{member.joined_at.strftime('%d %b %Y at %H:%M')}", inline=False)
+            await channel.send(embed=embed)
 
 @client.command()
 @commands.is_owner()
-async def info(ctx, member: discord.Member):
-    await ctx.author.send("This command does not return anything at the moment")
+async def info(ctx):
+    await ctx.channel.send("👍")
 
 
 
