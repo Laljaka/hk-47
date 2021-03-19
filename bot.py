@@ -366,8 +366,8 @@ async def on_member_join(member):
             #embed.set_author(name=ctx.author.display_name, url="https://twitter.com/RealDrewData", icon_url=ctx.author.avatar_url)
             #embed.set_thumbnail(url="https://i.imgur.com/axLm3p6.jpeg")
             embed.set_thumbnail(url=member.avatar_url)
-            embed.add_field(name="User name", value=f"{member.display_name}#{member.discriminator}", inline=False)
-            embed.add_field(name="User link", value=f"{member.mention}", inline=False)
+            embed.add_field(name="User name", value=f"{member.display_name}#{member.discriminator}", inline=True)
+            embed.add_field(name="User link", value=f"{member.mention}", inline=True)
             embed.add_field(name="User id", value=f"{member.id}", inline=False)
             embed.add_field(name="Account created", value=f"{member.created_at.strftime('%d %b %Y at %H:%M')}", inline=False)
             #embed.set_footer(text="Learn more here: realdrewdata.medium.com")
@@ -390,8 +390,8 @@ async def on_member_remove(member):
             color=discord.Color.red())
             #embed.set_author(name=f"{member.display_name}#{member.discriminator}", icon_url=f"{member.avatar_url}")
             embed.set_thumbnail(url=member.avatar_url)
-            embed.add_field(name="User name", value=f"{member.display_name}#{member.discriminator}", inline=False)
-            embed.add_field(name="User link", value=f"{member.mention}", inline=False)
+            embed.add_field(name="User name", value=f"{member.display_name}#{member.discriminator}", inline=True)
+            embed.add_field(name="User link", value=f"{member.mention}", inline=True)
             embed.add_field(name="User id", value=f"{member.id}", inline=False)
             embed.add_field(name="Joined the server", value=f"{member.joined_at.strftime('%d %b %Y at %H:%M')}", inline=False)
             await channel.send(embed=embed)
@@ -399,7 +399,8 @@ async def on_member_remove(member):
 @client.command()
 @commands.is_owner()
 async def info(ctx):
-    await ctx.channel.send("👍")
+    print(discord.Sticker)
+    #await ctx.channel.send("👍")
 
 
 
