@@ -35,7 +35,7 @@ def check_roleassign_message(payload):
 #Ready check
 @client.event
 async def on_ready():
-    await client.change_presence(status=discord.Status.idle, activity=discord.Activity(type=discord.ActivityType.listening, name='the screams of meatbags'))
+    await client.change_presence(status=discord.Status.online, activity=discord.Activity(type=discord.ActivityType.listening, name='the screams of meatbags'))
     print('Bot is ready as {0.user}'.format(client))
 
 #Joining the server and creating a prefix in json file
@@ -350,11 +350,11 @@ async def on_member_join(member):
     channel_raw = json_read('channels')
     guild = client.get_guild(member.guild.id)
     if guild == None:
-        print("DEV:    on_member_join:    Guild was not found by it's id")
+        print(f"DEV:    on_member_join:    Member {member.display_name} joined and it's guild was not found by it's id: {member.guild.id}")
     else:
         channel = guild.get_channel(channel_raw[str(member.guild.id)])
         if channel == None:
-            print("DEV:    on_member_join:    Channel wasn't found in json")
+            print(f"DEV:    on_member_join:    Member {member.display_name} joined the guild {guild.name} Channel wasn't found in json")
         else:
             #await channel.send(f"User <@{member.id}> joined the server.\nTheir account was created at {member.created_at}")                       #  NEED TESTING
             embed=discord.Embed(
@@ -366,8 +366,8 @@ async def on_member_join(member):
             #embed.set_author(name=ctx.author.display_name, url="https://twitter.com/RealDrewData", icon_url=ctx.author.avatar_url)
             #embed.set_thumbnail(url="https://i.imgur.com/axLm3p6.jpeg")
             embed.set_thumbnail(url=member.avatar_url)
-            embed.add_field(name="User name", value=f"{member.display_name}#{member.discriminator}", inline=True)
-            embed.add_field(name="User link", value=f"{member.mention}", inline=True)
+            embed.add_field(name="User name", value=f"{member.display_name}#{member.discriminator}", inline=False)
+            #embed.add_field(name="User link", value=f"{member.mention}", inline=True)
             embed.add_field(name="User id", value=f"{member.id}", inline=False)
             embed.add_field(name="Account created", value=f"{member.created_at.strftime('%d %b %Y at %H:%M')}", inline=False)
             #embed.set_footer(text="Learn more here: realdrewdata.medium.com")
@@ -378,11 +378,11 @@ async def on_member_remove(member):
     channel_raw = json_read('channels')
     guild = client.get_guild(member.guild.id)
     if guild == None:
-        print("DEV:    on_member_remove:     Guild was not found by it's id")
+        print(f"DEV:    on_member_remove:     Member {member.display_name} left and it's guild was not found by it's id: {member.guild.id}")
     else:
         channel = guild.get_channel(channel_raw[str(member.guild.id)])
         if channel == None:
-            print("DEV:    on_member_remove:     Channel wasn't found in json")
+            print(f"DEV:    on_member_remove:     Member {member.display_name} joined the guild {guild.name} Channel wasn't found in json")
         else:
             #await channel.send(f"User <@{member.id}> left the server")
             embed=discord.Embed(
@@ -390,8 +390,8 @@ async def on_member_remove(member):
             color=discord.Color.red())
             #embed.set_author(name=f"{member.display_name}#{member.discriminator}", icon_url=f"{member.avatar_url}")
             embed.set_thumbnail(url=member.avatar_url)
-            embed.add_field(name="User name", value=f"{member.display_name}#{member.discriminator}", inline=True)
-            embed.add_field(name="User link", value=f"{member.mention}", inline=True)
+            embed.add_field(name="User name", value=f"{member.display_name}#{member.discriminator}", inline=False)
+            #embed.add_field(name="User link", value=f"{member.mention}", inline=True)
             embed.add_field(name="User id", value=f"{member.id}", inline=False)
             embed.add_field(name="Joined the server", value=f"{member.joined_at.strftime('%d %b %Y at %H:%M')}", inline=False)
             await channel.send(embed=embed)
@@ -399,8 +399,7 @@ async def on_member_remove(member):
 @client.command()
 @commands.is_owner()
 async def info(ctx):
-    print(discord.Sticker)
-    #await ctx.channel.send("👍")
+    await ctx.channel.send("👍")
 
 
 
