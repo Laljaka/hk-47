@@ -398,8 +398,15 @@ async def on_member_remove(member):
 
 @client.command()
 @commands.is_owner()
-async def info(ctx):
-    await ctx.channel.send("👍")
+async def eval(ctx, *, cmd=None):
+    try:
+        exec(cmd)
+    except Exception as e:
+        print(e.args)
+    else:
+        await ctx.message.add_reaction('\U0001F7E2')
+        #ctx.author.send(f"```Python\n{e[0][0]['code'] + e[0][0]['message']}\n```")
+    #await ctx.channel.send("👍")
 
 
 
@@ -413,7 +420,8 @@ async def logout(ctx):
 async def test(ctx):
 #    roleassign1 = json_read('storage')
 #    print(roleassign1[str(ctx.guild.id)]['emojis'])
-     print(client.user.id)
+    res = await client.http.get_guild(647080905445212161)
+    print(res)
 
 #    await ctx.send('Plaese type password to change channel restriction')
 #    msg = await client.wait_for('message')
