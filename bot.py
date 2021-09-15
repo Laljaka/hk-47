@@ -4,6 +4,9 @@ from discord.ext import commands
 import os
 from dotenv import load_dotenv
 import youtube_dl
+import asyncio
+from time import sleep
+import psutil
 #import emojis
 #from datetime import datetime
 load_dotenv()
@@ -11,6 +14,8 @@ load_dotenv()
 #Variables
 intents = discord.Intents.default()
 intents.members = True
+global queue
+queue = {}
 
 #reads json
 def json_read(filename):
@@ -68,20 +73,18 @@ async def changeprefix(ctx, prefix):
 
 #music stuff
 @client.command()
-async def play (ctx, url:str):
-    song = os.path.isfile("song.mp3")
-    try:
-        if song:
-            os.remove("song.mp3")
-    except PermissionError:
-        await ctx.send("UWU")
-        return
+async def cleanup(ctx):
+    for proc in psutil.process_iter():
+    # check whether the process name matches
+        if proc.name() == "ffmpeg.exe":
+            proc.kill()
+    del(queue[ctx.guild.id])
 
-    channel = ctx.message.author.voice.channel
-    voiceChannel = discord.utils.get(ctx.guild.voice_channels, name=channel.name)
-    await voiceChannel.connect()
-    voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
-
+@client.command(aliases=['p'])
+async def play(ctx, url:str):
+    global queue
+    print(ctx.voice_client)
+    print(queue)
     ydl_opts = {
         'format': 'bestaudio/best',
         'postprocessors': [{
@@ -90,17 +93,79 @@ async def play (ctx, url:str):
             'preferredquality': '192',
         }],
     }
-    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([url])
-    for file in os.listdir("./"):
-        if file.endswith(".mp3"):
-            os.rename(file, "song.mp3")
-    voice.play(discord.FFmpegPCMAudio("song.mp3"))
+    FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
 
-@client.command()
-async def leave (ctx):
-    voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
-    await voice.disconnect()
+    channel = ctx.message.author.voice.channel
+    voiceChannel = discord.utils.get(ctx.guild.voice_channels, name=channel.name)
+    #voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
+    #print(voice)
+    if ctx.voice_client is None:
+        print("not connected")
+        voice = await voiceChannel.connect()
+        queue[ctx.guild.id] = []
+    else:
+        #if ctx.voice_client.is_connected():
+            #print("connected NOT moved")
+            #voice = await ctx.voice_client.move_to(channel)
+        #else:
+            #print("not connected but moved")
+            #queue[ctx.guild.id] = []
+        voice = await ctx.voice_client.move_to(channel)
+
+
+    if len(queue[ctx.guild.id]) == 0:
+        #song = os.path.isfile("song.mp3")
+        #try:
+        #    if song:
+        #        os.remove("song.mp3")
+        #    except PermissionError:
+        #        await ctx.send("UWU")
+        #        return
+
+
+        queue[ctx.guild.id].append(url)
+
+        def after_song(err):
+            queue[ctx.guild.id].pop(0)
+            if len(queue[ctx.guild.id]) > 0:
+                with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(queue[ctx.guild.id][0], download=False)
+                URL = info['formats'][0]['url']
+                try:
+                    voice.play(discord.FFmpegPCMAudio(URL, **FFMPEG_OPTIONS), after=after_song)
+                except:
+                    pass
+            else:
+                #coro = voice.disconnect()
+                #fut = asyncio.run_coroutine_threadsafe(coro, client.loop)
+                #try:
+                #    fut.result()
+                #except:
+                #    pass
+                return
+
+        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(queue[ctx.guild.id][0], download=False)
+        URL = info['formats'][0]['url']
+        try:
+            voice.play(discord.FFmpegPCMAudio(URL, **FFMPEG_OPTIONS), after=after_song)
+        except:
+            pass
+        print(queue)
+    else:
+        queue[ctx.guild.id].append(url)
+
+@client.command(aliases=['disconnect', 'dc', 'l'])
+async def leave(ctx):
+    #voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
+
+    if ctx.voice_client:
+        if ctx.voice_client.is_connected():
+            await ctx.voice_client.disconnect()
+        else:
+            await ctx.send("You silly, I'm not in the voice chat owo")
+    else:
+        await ctx.send("You silly, I'm not in the voice chat owo")
 
 
 @client.command()
