@@ -9,6 +9,7 @@ class music_cog(commands.Cog):
         self.bot = bot
 
         self.is_playing = {}
+        self.is_stopping = {}
 
         self.music_queue = {}
         self.YDL_OPTIONS = {
@@ -93,22 +94,40 @@ class music_cog(commands.Cog):
 
     @commands.command()
     async def skip(self, ctx):
-        if self.vc[ctx.guild.id] is not None:
-            self.vc[ctx.guild.id].stop()
-            await self.play_music(ctx)
+        if ctx.guild.id in self.vc:
+            if self.vc[ctx.guild.id] is not None and self.vc[ctx.guild.id].is_connected():
+                if self.is_playing[ctx.guild.id] is True:
+                    self.vc[ctx.guild.id].stop()
+                    await self.play_music(ctx)
+                else:
+                    await ctx.send("I'm not cuwently playing anywing owo")
+            else:
+                await ctx.send("I'm not even connected to a voice chat")
 
     @commands.command()
     async def stop(self, ctx):
-        if self.vc[ctx.guild.id] is not None:
-            self.vc[ctx.guild.id].stop()
-            self.music_queue[ctx.guild.id].clear()
+        if ctx.guild.id in self.vc:
+            if self.vc[ctx.guild.id] is not None and self.vc[ctx.guild.id].is_connected():
+                if self.is_playing[ctx.guild.id] is True:
+                    self.vc[ctx.guild.id].stop()
+                    self.is_playing[ctx.guild.id] = False
+                    self.music_queue[ctx.guild.id].clear()
+                else:
+                    await ctx.send("I'm not cuwently playing anywing owo")
+            else:
+                await ctx.send("I'm not even connected to a voice chat")
 
     @commands.command()
     async def leave(self, ctx):
-        if self.vc[ctx.guild.id] is not None:
-            self.vc[ctx.guild.id].stop()
-            self.music_queue[ctx.guild.id].clear()
-            await self.vs[ctx.guild.id].disconnect()
+        if ctx.guild.id in self.vc:
+            if self.vc[ctx.guild.id] is not None and self.vc[ctx.guild.id].is_connected():
+                if self.is_playing[ctx.guild.id] is True:
+                    self.vc[ctx.guild.id].stop()
+                    self.is_playing[ctx.guild.id] = False
+                self.music_queue[ctx.guild.id].clear()
+                await self.vs[ctx.guild.id].disconnect()
+            else:
+                await ctx.send("I'm not even connected to a voice chat")
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
@@ -119,8 +138,10 @@ class music_cog(commands.Cog):
         #print(type(after))
         #print(type(after.channel))
         #print(self.bot.user.id)
-        if member.id == self.bot.id and type(after.channel) is None:
-            print('left')
+        if member.id == self.bot.user.id and type(after.channel) is None:
+            self.vc[member.guild.id].stop()
+            self.is_playing[member.guild.id] = False
+            self.music_queue[member.guild.id].clear()
 
 
 
