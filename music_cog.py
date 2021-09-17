@@ -9,11 +9,11 @@ class music_cog(commands.Cog):
         self.bot = bot
 
         self.is_playing = {}
-        self.is_stopping = {}
+        # self.is_stopping = {}
 
         self.music_queue = {}
         self.YDL_OPTIONS = {
-            'format': 'bestaudio',
+            'format': 'bestaudio/best',
             'noplaylist': 'True',
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
@@ -43,8 +43,9 @@ class music_cog(commands.Cog):
 
             self.music_queue[ctx.guild.id].pop(0)
 
-            self.vc[ctx.guild.id].play(discord.FFmpegPCMAudio(m_url, **self.FFMPEG_OPTIONS),
-                                       after=lambda e: self.play_next(ctx))
+            source = discord.FFmpegOpusAudio.from_probe(m_url, **self.FFMPEG_OPTIONS)
+            self.vc[ctx.guild.id].play(source, after=lambda e: self.play_next(ctx))
+
         else:
             self.is_playing[ctx.guild.id] = False
 
@@ -64,8 +65,8 @@ class music_cog(commands.Cog):
 
             self.music_queue[ctx.guild.id].pop(0)
 
-            self.vc[ctx.guild.id].play(discord.FFmpegPCMAudio(m_url, **self.FFMPEG_OPTIONS),
-                                       after=lambda e: self.play_next(ctx))
+            source = discord.FFmpegOpusAudio(m_url, **self.FFMPEG_OPTIONS)
+            self.vc[ctx.guild.id].play(source, after=lambda e:  self.play_next(ctx))
         else:
             self.is_playing[ctx.guild.id] = False
 
@@ -79,6 +80,7 @@ class music_cog(commands.Cog):
         if ctx.guild.id not in self.is_playing:
             self.is_playing[ctx.guild.id] = False
 
+        # None type has no attribute channel
         voice_channel = ctx.author.voice.channel
         if voice_channel is None:
             await ctx.send("Connect to a voice channel first, silly")
@@ -121,27 +123,24 @@ class music_cog(commands.Cog):
     async def leave(self, ctx):
         if ctx.guild.id in self.vc:
             if self.vc[ctx.guild.id] is not None and self.vc[ctx.guild.id].is_connected():
-                if self.is_playing[ctx.guild.id] is True:
-                    self.vc[ctx.guild.id].stop()
-                    self.is_playing[ctx.guild.id] = False
-                self.music_queue[ctx.guild.id].clear()
+                # if self.is_playing[ctx.guild.id] is True:
+                # self.vc[ctx.guild.id].stop()
+                # self.is_playing[ctx.guild.id] = False
+                # self.music_queue[ctx.guild.id].clear()
                 await self.vs[ctx.guild.id].disconnect()
             else:
                 await ctx.send("I'm not even connected to a voice chat")
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
-        #print(type(member))
-        #print(member.id)
-        #print(type(before))
-        #print(type(before.channel))
-        #print(type(after))
-        #print(type(after.channel))
-        #print(self.bot.user.id)
+        # print(type(member))
+        # print(member.id)
+        # print(type(before))
+        # print(type(before.channel))
+        # print(type(after))
+        # print(type(after.channel))
+        # print(self.bot.user.id)
         if member.id == self.bot.user.id and type(after.channel) is None:
             self.vc[member.guild.id].stop()
             self.is_playing[member.guild.id] = False
             self.music_queue[member.guild.id].clear()
-
-
-
