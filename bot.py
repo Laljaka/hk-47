@@ -1,27 +1,16 @@
 import discord
-import json
+from fmjson import *
 from discord.ext import commands
 import os
 from dotenv import load_dotenv
 
 from music_cog import music_cog
+from feedback_cog import feedback_cog
 
 load_dotenv()
 
 intents = discord.Intents.default()
 intents.members = True
-
-
-def json_read(filename):
-    with open(f'{filename}.json', 'r') as f:
-        print(f)
-        data = json.load(f)
-    return data
-
-
-def json_write(filename, data):
-    with open(f'{filename}.json', 'w') as f:
-        json.dump(data, f, indent=4)
 
 
 def get_prefix(client, message):
@@ -32,6 +21,7 @@ def get_prefix(client, message):
 client = commands.Bot(command_prefix=get_prefix, intents=intents)
 
 client.add_cog(music_cog(client))
+client.add_cog(feedback_cog(client))
 
 
 @client.event

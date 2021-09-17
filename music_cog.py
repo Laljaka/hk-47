@@ -35,7 +35,7 @@ class music_cog(commands.Cog):
 
         return {'source': info['formats'][0]['url'], 'title': info['title']}
 
-    def play_next(self, ctx):
+    async def play_next(self, ctx):
         if len(self.music_queue[ctx.guild.id]) > 0:
             self.is_playing[ctx.guild.id] = True
 
@@ -43,8 +43,8 @@ class music_cog(commands.Cog):
 
             self.music_queue[ctx.guild.id].pop(0)
 
-            source = discord.FFmpegOpusAudio.from_probe(m_url, **self.FFMPEG_OPTIONS)
-            self.vc[ctx.guild.id].play(source, after=lambda e: self.play_next(ctx))
+            source = await discord.FFmpegOpusAudio.from_probe(m_url, **self.FFMPEG_OPTIONS)
+            self.vc[ctx.guild.id].play(source, after=lambda e: self.bot.loop.create_task(self.play_next(ctx)))
 
         else:
             self.is_playing[ctx.guild.id] = False
@@ -65,8 +65,8 @@ class music_cog(commands.Cog):
 
             self.music_queue[ctx.guild.id].pop(0)
 
-            source = discord.FFmpegOpusAudio(m_url, **self.FFMPEG_OPTIONS)
-            self.vc[ctx.guild.id].play(source, after=lambda e:  self.play_next(ctx))
+            source = await discord.FFmpegOpusAudio.from_probe(m_url, **self.FFMPEG_OPTIONS)
+            self.vc[ctx.guild.id].play(source, after=lambda e: self.bot.loop.create_task(self.play_next(ctx)))
         else:
             self.is_playing[ctx.guild.id] = False
 
@@ -80,7 +80,7 @@ class music_cog(commands.Cog):
         if ctx.guild.id not in self.is_playing:
             self.is_playing[ctx.guild.id] = False
 
-        # None type has no attribute channel
+        # None type has no attribute channel if author of the message is not in vc
         voice_channel = ctx.author.voice.channel
         if voice_channel is None:
             await ctx.send("Connect to a voice channel first, silly")
@@ -127,7 +127,7 @@ class music_cog(commands.Cog):
                 # self.vc[ctx.guild.id].stop()
                 # self.is_playing[ctx.guild.id] = False
                 # self.music_queue[ctx.guild.id].clear()
-                await self.vs[ctx.guild.id].disconnect()
+                await self.vc[ctx.guild.id].disconnect()
             else:
                 await ctx.send("I'm not even connected to a voice chat")
 
@@ -140,7 +140,9 @@ class music_cog(commands.Cog):
         # print(type(after))
         # print(type(after.channel))
         # print(self.bot.user.id)
-        if member.id == self.bot.user.id and type(after.channel) is None:
+        if member.id == self.bot.user.id and after.channel is None:
+            await self.vc[member.guild.id].disconnect()
             self.vc[member.guild.id].stop()
             self.is_playing[member.guild.id] = False
             self.music_queue[member.guild.id].clear()
+            print("forcefully kicked")
