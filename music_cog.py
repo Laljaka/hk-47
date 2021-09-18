@@ -1,16 +1,17 @@
 import discord
+import asyncio
 from discord.ext import commands
+from misc.embed import player_embed
 
 from youtube_dl import YoutubeDL
 
 
-#implement cookies for mature content on youtube
 class music_cog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
         self.is_playing = {}
-        # self.is_stopping = {}
+        self.is_stopping = {}
 
         self.music_queue = {}
         self.YDL_OPTIONS = {
@@ -43,11 +44,12 @@ class music_cog(commands.Cog):
 
             m_url = self.music_queue[ctx.guild.id][0][0]['source']
 
-            await ctx.send(f"Now playing: {self.music_queue[ctx.guild.id][0][0]['title']}")
+            await ctx.send(embed=player_embed('Now playing:', self.music_queue[ctx.guild.id][0][0]['title'], discord.Colour.green()))
             self.music_queue[ctx.guild.id].pop(0)
 
             source = await discord.FFmpegOpusAudio.from_probe(m_url, **self.FFMPEG_OPTIONS)
-            self.vc[ctx.guild.id].play(source, after=lambda e: print('Player error: %s' % e) if e else self.bot.loop.create_task(self.play_next(ctx)))
+            self.vc[ctx.guild.id].play(source, after=lambda e: print(
+                'Player error: %s' % e) if e else self.bot.loop.create_task(self.play_next(ctx)))
 
         else:
             self.is_playing[ctx.guild.id] = False
@@ -66,15 +68,17 @@ class music_cog(commands.Cog):
                 await self.vc[ctx.guild.id].move_to(
                     self.music_queue[ctx.guild.id][0][1])
 
-            await ctx.send(f"Now playing: {self.music_queue[ctx.guild.id][0][0]['title']}")
+            await ctx.send(embed=player_embed('Now playing:', self.music_queue[ctx.guild.id][0][0]['title'], discord.Colour.green()))
             self.music_queue[ctx.guild.id].pop(0)
 
             source = await discord.FFmpegOpusAudio.from_probe(m_url, **self.FFMPEG_OPTIONS)
-            self.vc[ctx.guild.id].play(source, after=lambda e: print('Player error: %s' % e) if e else self.bot.loop.create_task(self.play_next(ctx)))
+            self.vc[ctx.guild.id].play(source, after=lambda e: print(
+                'Player error: %s' % e) if e else self.bot.loop.create_task(self.play_next(ctx)))
         else:
             self.is_playing[ctx.guild.id] = False
 
     @commands.command(aliases=['p'])
+    @commands.guild_only()
     async def play(self, ctx, *args):
         query = " ".join(args)
 
@@ -83,6 +87,9 @@ class music_cog(commands.Cog):
 
         if ctx.guild.id not in self.is_playing:
             self.is_playing[ctx.guild.id] = False
+
+        if ctx.guild.id not in self.is_stopping:
+            self.is_stopping[ctx.guild.id] = False
 
         # None type has no attribute channel if author of the message is not in vc
         voice_channel = ctx.author.voice.channel
@@ -93,12 +100,14 @@ class music_cog(commands.Cog):
             if type(song) == type(True):
                 await ctx.send("Incorrect type")
             else:
+                await ctx.send(embed=player_embed('Successfully queued:', song['title'], discord.Colour.gold()))
                 self.music_queue[ctx.guild.id].append([song, voice_channel])
 
                 if self.is_playing[ctx.guild.id] is False:
                     await self.play_music(ctx)
 
     @commands.command()
+    @commands.guild_only()
     async def skip(self, ctx):
         if ctx.guild.id in self.vc:
             if self.vc[ctx.guild.id] is not None and self.vc[ctx.guild.id].is_connected():
@@ -111,6 +120,7 @@ class music_cog(commands.Cog):
                 await ctx.send("I'm not even connected to a voice chat")
 
     @commands.command()
+    @commands.guild_only()
     async def stop(self, ctx):
         if ctx.guild.id in self.vc:
             if self.vc[ctx.guild.id] is not None and self.vc[ctx.guild.id].is_connected():
@@ -124,16 +134,25 @@ class music_cog(commands.Cog):
                 await ctx.send("I'm not even connected to a voice chat")
 
     @commands.command()
+    @commands.guild_only()
     async def leave(self, ctx):
         if ctx.guild.id in self.vc:
             if self.vc[ctx.guild.id] is not None and self.vc[ctx.guild.id].is_connected():
-                # if self.is_playing[ctx.guild.id] is True:
-                # self.vc[ctx.guild.id].stop()
-                # self.is_playing[ctx.guild.id] = False
-                # self.music_queue[ctx.guild.id].clear()
+                if self.is_playing[ctx.guild.id] is True:
+                    self.vc[ctx.guild.id].stop()
+                    self.is_playing[ctx.guild.id] = False
+                    self.music_queue[ctx.guild.id].clear()
+                self.is_stopping[ctx.guild.id] = True
                 await self.vc[ctx.guild.id].disconnect()
+                await asyncio.sleep(1)
+                self.is_stopping[ctx.guild.id] = False
             else:
                 await ctx.send("I'm not even connected to a voice chat")
+
+    @commands.command()
+    @commands.guild_only()
+    async def testing(self, ctx):
+        await ctx.send(embed=player_embed('Title', 'Description', discord.Colour.green()))
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
@@ -145,8 +164,11 @@ class music_cog(commands.Cog):
         # print(type(after.channel))
         # print(self.bot.user.id)
         if member.id == self.bot.user.id and after.channel is None:
-            await self.vc[member.guild.id].disconnect()
-            self.vc[member.guild.id].stop()
-            self.is_playing[member.guild.id] = False
-            self.music_queue[member.guild.id].clear()
-            print("forcefully kicked")
+            if self.is_stopping[member.guild.id] is True:
+                pass
+            else:
+                await self.vc[member.guild.id].disconnect()
+                self.vc[member.guild.id].stop()
+                self.is_playing[member.guild.id] = False
+                self.music_queue[member.guild.id].clear()
+                print("forcefully kicked")
