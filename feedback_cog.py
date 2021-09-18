@@ -1,6 +1,5 @@
-import discord
 from discord.ext import commands
-from fmjson import *
+from misc.fmjson import *
 import datetime
 
 
