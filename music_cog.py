@@ -4,6 +4,7 @@ from discord.ext import commands
 from youtube_dl import YoutubeDL
 
 
+#implement cookies for mature content on youtube
 class music_cog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -15,6 +16,7 @@ class music_cog(commands.Cog):
         self.YDL_OPTIONS = {
             'format': 'bestaudio/best',
             'noplaylist': 'True',
+            'cookiefile': 'cookies.txt',
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
@@ -41,10 +43,11 @@ class music_cog(commands.Cog):
 
             m_url = self.music_queue[ctx.guild.id][0][0]['source']
 
+            await ctx.send(f"Now playing: {self.music_queue[ctx.guild.id][0][0]['title']}")
             self.music_queue[ctx.guild.id].pop(0)
 
             source = await discord.FFmpegOpusAudio.from_probe(m_url, **self.FFMPEG_OPTIONS)
-            self.vc[ctx.guild.id].play(source, after=lambda e: self.bot.loop.create_task(self.play_next(ctx)))
+            self.vc[ctx.guild.id].play(source, after=lambda e: print('Player error: %s' % e) if e else self.bot.loop.create_task(self.play_next(ctx)))
 
         else:
             self.is_playing[ctx.guild.id] = False
@@ -63,10 +66,11 @@ class music_cog(commands.Cog):
                 await self.vc[ctx.guild.id].move_to(
                     self.music_queue[ctx.guild.id][0][1])
 
+            await ctx.send(f"Now playing: {self.music_queue[ctx.guild.id][0][0]['title']}")
             self.music_queue[ctx.guild.id].pop(0)
 
             source = await discord.FFmpegOpusAudio.from_probe(m_url, **self.FFMPEG_OPTIONS)
-            self.vc[ctx.guild.id].play(source, after=lambda e: self.bot.loop.create_task(self.play_next(ctx)))
+            self.vc[ctx.guild.id].play(source, after=lambda e: print('Player error: %s' % e) if e else self.bot.loop.create_task(self.play_next(ctx)))
         else:
             self.is_playing[ctx.guild.id] = False
 
