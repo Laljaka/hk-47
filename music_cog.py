@@ -2,6 +2,7 @@ import discord
 import asyncio
 from discord.ext import commands
 from misc.embed import player_embed
+from requests import get
 
 from youtube_dl import YoutubeDL
 
@@ -32,24 +33,33 @@ class music_cog(commands.Cog):
     def search_yt(self, item):
         with YoutubeDL(self.YDL_OPTIONS) as ydl:
             try:
-                info = ydl.extract_info(f"ytsearch:{item}", download=False)['entries'][0]
+                get(item)
             except Exception:
-                return False
+                try:
+                    info = ydl.extract_info(f"ytsearch:{item}", download=False)['entries'][0]
+                except Exception:
+                    return False
+            else:
+                try:
+                    info = ydl.extract_info(item, download=False)
+                except Exception:
+                    return False
 
-        return {'source': info['formats'][0]['url'], 'title': info['title']}
+        return {'source': info['formats'][0]['url'], 'title': info['title'], 'thumbnail': info['thumbnail']}
 
     async def play_next(self, ctx):
         if len(self.music_queue[ctx.guild.id]) > 0:
             self.is_playing[ctx.guild.id] = True
 
             m_url = self.music_queue[ctx.guild.id][0][0]['source']
+            #title = self.music_queue[ctx.guild.id][0][0]['title']
+            #thumb = self.music_queue[ctx.guild.id][0][0]['thumbnail']
 
-            await ctx.send(embed=player_embed('Now playing:', self.music_queue[ctx.guild.id][0][0]['title'], discord.Colour.green()))
             self.music_queue[ctx.guild.id].pop(0)
 
             source = await discord.FFmpegOpusAudio.from_probe(m_url, **self.FFMPEG_OPTIONS)
-            self.vc[ctx.guild.id].play(source, after=lambda e: print(
-                'Player error: %s' % e) if e else self.bot.loop.create_task(self.play_next(ctx)))
+            self.vc[ctx.guild.id].play(source, after=lambda e: print('Player error: %s' % e) if e else self.bot.loop.create_task(self.play_next(ctx)))
+            #await ctx.send(embed=player_embed('Now playing:', title, ' ', discord.Colour.green(), thumb))
 
         else:
             self.is_playing[ctx.guild.id] = False
@@ -61,6 +71,8 @@ class music_cog(commands.Cog):
                 self.vc[ctx.guild.id] = ctx.voice_client
 
             m_url = self.music_queue[ctx.guild.id][0][0]['source']
+            #title = self.music_queue[ctx.guild.id][0][0]['title']
+            #thumb = self.music_queue[ctx.guild.id][0][0]['thumbnail']
 
             if self.vc[ctx.guild.id] is None or not self.vc[ctx.guild.id].is_connected():
                 self.vc[ctx.guild.id] = await self.music_queue[ctx.guild.id][0][1].connect()
@@ -68,12 +80,11 @@ class music_cog(commands.Cog):
                 await self.vc[ctx.guild.id].move_to(
                     self.music_queue[ctx.guild.id][0][1])
 
-            await ctx.send(embed=player_embed('Now playing:', self.music_queue[ctx.guild.id][0][0]['title'], discord.Colour.green()))
             self.music_queue[ctx.guild.id].pop(0)
 
             source = await discord.FFmpegOpusAudio.from_probe(m_url, **self.FFMPEG_OPTIONS)
-            self.vc[ctx.guild.id].play(source, after=lambda e: print(
-                'Player error: %s' % e) if e else self.bot.loop.create_task(self.play_next(ctx)))
+            self.vc[ctx.guild.id].play(source, after=lambda e: print('Player error: %s' % e) if e else self.bot.loop.create_task(self.play_next(ctx)))
+            #await ctx.send(embed=player_embed('Now playing:', title, ' ', discord.Colour.green(), thumb))
         else:
             self.is_playing[ctx.guild.id] = False
 
@@ -100,9 +111,11 @@ class music_cog(commands.Cog):
             if type(song) == type(True):
                 await ctx.send("Incorrect type")
             else:
-                await ctx.send(embed=player_embed('Successfully queued:', song['title'], discord.Colour.gold()))
                 self.music_queue[ctx.guild.id].append([song, voice_channel])
-
+                entry = len(self.music_queue[ctx.guild.id])
+                if self.is_playing[ctx.guild.id]:
+                    entry = entry + 1
+                await ctx.send(embed=player_embed('Successfully queued:', song['title'], f'in position {entry}', discord.Colour.gold(), song['thumbnail']))
                 if self.is_playing[ctx.guild.id] is False:
                     await self.play_music(ctx)
 
@@ -113,11 +126,30 @@ class music_cog(commands.Cog):
             if self.vc[ctx.guild.id] is not None and self.vc[ctx.guild.id].is_connected():
                 if self.is_playing[ctx.guild.id] is True:
                     self.vc[ctx.guild.id].stop()
-                    await self.play_music(ctx)
+                    #await asyncio.sleep(5)
+                    await self.play_next(ctx)
                 else:
                     await ctx.send("I'm not cuwently playing anywing owo")
             else:
                 await ctx.send("I'm not even connected to a voice chat")
+
+    @commands.command()
+    @commands.guild_only()
+    async def queue(self, ctx):
+        if ctx.guild.id in self.vc:
+            if self.vc[ctx.guild.id] is not None and self.vc[ctx.guild.id].is_connected():
+                if self.is_playing[ctx.guild.id] is True:
+                    embed = player_embed(' ', 'Queue:', ' ', discord.Colour.blue(), None)
+                    for entry in self.music_queue[ctx.guild.id]:
+                        embed.add_field(name=entry[0]['title'], value='TBA', inline=False)
+                    await ctx.send(embed=embed)
+                else:
+                    await ctx.send("I'm not cuwently playing anywing owo")
+            else:
+                await ctx.send("I'm not even connected to a voice chat")
+
+
+
 
     @commands.command()
     @commands.guild_only()
@@ -151,8 +183,16 @@ class music_cog(commands.Cog):
 
     @commands.command()
     @commands.guild_only()
-    async def testing(self, ctx):
-        await ctx.send(embed=player_embed('Title', 'Description', discord.Colour.green()))
+    @commands.is_owner()
+    async def testing(self, ctx, *args):
+        querry = " ".join(args)
+        try:
+            get(querry)
+        except:
+            print('not a link')
+        else:
+            print('is a link')
+        #await ctx.send(embed=player_embed('Title', 'Description', discord.Colour.green()))
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
