@@ -3,7 +3,7 @@ from misc.fmjson import *
 import datetime
 
 
-class feedback_cog(commands.Cog):
+class feedback_cog(commands.Cog, name='Feedback'):
     def __init__(self, bot):
         self.bot = bot
 

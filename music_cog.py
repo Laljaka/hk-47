@@ -1,13 +1,13 @@
 import discord
 import asyncio
-from discord.ext import commands
+from discord.ext import commands, tasks
 from misc.embed import player_embed
 from requests import get
 
 from youtube_dl import YoutubeDL
 
 
-class music_cog(commands.Cog):
+class music_cog(commands.Cog, name='Music control'):
     def __init__(self, bot):
         self.bot = bot
 
@@ -29,6 +29,8 @@ class music_cog(commands.Cog):
                                'options': '-vn'}
 
         self.vc = {}
+        self.task = {}
+        self.playing_check.start()
 
     def search_yt(self, item):
         with YoutubeDL(self.YDL_OPTIONS) as ydl:
@@ -48,31 +50,33 @@ class music_cog(commands.Cog):
         return {'source': info['formats'][0]['url'], 'title': info['title'], 'thumbnail': info['thumbnail']}
 
     async def play_next(self, ctx):
+        print('play_next run')
         if len(self.music_queue[ctx.guild.id]) > 0:
             self.is_playing[ctx.guild.id] = True
 
             m_url = self.music_queue[ctx.guild.id][0][0]['source']
-            #title = self.music_queue[ctx.guild.id][0][0]['title']
-            #thumb = self.music_queue[ctx.guild.id][0][0]['thumbnail']
+            title = self.music_queue[ctx.guild.id][0][0]['title']
+            thumb = self.music_queue[ctx.guild.id][0][0]['thumbnail']
 
             self.music_queue[ctx.guild.id].pop(0)
 
             source = await discord.FFmpegOpusAudio.from_probe(m_url, **self.FFMPEG_OPTIONS)
-            self.vc[ctx.guild.id].play(source, after=lambda e: print('Player error: %s' % e) if e else self.bot.loop.create_task(self.play_next(ctx)))
-            #await ctx.send(embed=player_embed('Now playing:', title, ' ', discord.Colour.green(), thumb))
+            self.vc[ctx.guild.id].play(source, after=lambda e: self.bot.loop.create_task(self.play_next(ctx)))
+            await ctx.send(embed=player_embed('Now playing:', title, ' ', discord.Colour.green(), thumb))
 
         else:
             self.is_playing[ctx.guild.id] = False
 
     async def play_music(self, ctx):
+        print('play_music run')
         if len(self.music_queue[ctx.guild.id]) > 0:
             self.is_playing[ctx.guild.id] = True
             if ctx.guild.id not in self.vc:
                 self.vc[ctx.guild.id] = ctx.voice_client
 
             m_url = self.music_queue[ctx.guild.id][0][0]['source']
-            #title = self.music_queue[ctx.guild.id][0][0]['title']
-            #thumb = self.music_queue[ctx.guild.id][0][0]['thumbnail']
+            title = self.music_queue[ctx.guild.id][0][0]['title']
+            thumb = self.music_queue[ctx.guild.id][0][0]['thumbnail']
 
             if self.vc[ctx.guild.id] is None or not self.vc[ctx.guild.id].is_connected():
                 self.vc[ctx.guild.id] = await self.music_queue[ctx.guild.id][0][1].connect()
@@ -83,14 +87,15 @@ class music_cog(commands.Cog):
             self.music_queue[ctx.guild.id].pop(0)
 
             source = await discord.FFmpegOpusAudio.from_probe(m_url, **self.FFMPEG_OPTIONS)
-            self.vc[ctx.guild.id].play(source, after=lambda e: print('Player error: %s' % e) if e else self.bot.loop.create_task(self.play_next(ctx)))
-            #await ctx.send(embed=player_embed('Now playing:', title, ' ', discord.Colour.green(), thumb))
+            self.vc[ctx.guild.id].play(source, after=lambda e: self.bot.loop.create_task(self.play_next(ctx)))
+            await ctx.send(embed=player_embed('Now playing:', title, ' ', discord.Colour.green(), thumb))
         else:
             self.is_playing[ctx.guild.id] = False
 
     @commands.command(aliases=['p'])
     @commands.guild_only()
     async def play(self, ctx, *args):
+        print('play run')
         query = " ".join(args)
 
         if ctx.guild.id not in self.music_queue:
@@ -115,7 +120,8 @@ class music_cog(commands.Cog):
                 entry = len(self.music_queue[ctx.guild.id])
                 if self.is_playing[ctx.guild.id]:
                     entry = entry + 1
-                await ctx.send(embed=player_embed('Successfully queued:', song['title'], f'in position {entry}', discord.Colour.gold(), song['thumbnail']))
+                await ctx.send(embed=player_embed('Successfully queued:', song['title'], f'in position {entry}',
+                                                  discord.Colour.gold(), song['thumbnail']))
                 if self.is_playing[ctx.guild.id] is False:
                     await self.play_music(ctx)
 
@@ -126,8 +132,6 @@ class music_cog(commands.Cog):
             if self.vc[ctx.guild.id] is not None and self.vc[ctx.guild.id].is_connected():
                 if self.is_playing[ctx.guild.id] is True:
                     self.vc[ctx.guild.id].stop()
-                    #await asyncio.sleep(5)
-                    await self.play_next(ctx)
                 else:
                     await ctx.send("I'm not cuwently playing anywing owo")
             else:
@@ -148,18 +152,15 @@ class music_cog(commands.Cog):
             else:
                 await ctx.send("I'm not even connected to a voice chat")
 
-
-
-
     @commands.command()
     @commands.guild_only()
     async def stop(self, ctx):
         if ctx.guild.id in self.vc:
             if self.vc[ctx.guild.id] is not None and self.vc[ctx.guild.id].is_connected():
                 if self.is_playing[ctx.guild.id] is True:
-                    self.vc[ctx.guild.id].stop()
                     self.is_playing[ctx.guild.id] = False
                     self.music_queue[ctx.guild.id].clear()
+                    self.vc[ctx.guild.id].stop()
                 else:
                     await ctx.send("I'm not cuwently playing anywing owo")
             else:
@@ -185,14 +186,20 @@ class music_cog(commands.Cog):
     @commands.guild_only()
     @commands.is_owner()
     async def testing(self, ctx, *args):
-        querry = " ".join(args)
-        try:
-            get(querry)
-        except:
-            print('not a link')
-        else:
-            print('is a link')
-        #await ctx.send(embed=player_embed('Title', 'Description', discord.Colour.green()))
+        #self.task[ctx.guild.id].cancel()
+        for entry in self.is_playing:
+            print(entry)
+
+    @tasks.loop(seconds=10.0)
+    async def playing_check(self):
+        await asyncio.sleep(10)
+        print('obama')
+        self.playing_check.cancel()
+
+    @playing_check.before_loop
+    async def before_playing_check(self):
+        await self.bot.wait_until_ready()
+        print('loop has started')
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
