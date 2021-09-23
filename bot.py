@@ -4,8 +4,9 @@ from discord.ext import commands
 import os
 from dotenv import load_dotenv
 
-from music_cog import music_cog
-from feedback_cog import feedback_cog
+from cogs.music_cog import music_cog
+from cogs.feedback_cog import feedback_cog
+from cogs.owner_cog import owner_cog
 
 load_dotenv()
 
@@ -22,6 +23,7 @@ client = commands.Bot(command_prefix=get_prefix, intents=intents)
 
 client.add_cog(music_cog(client))
 client.add_cog(feedback_cog(client))
+client.add_cog(owner_cog(client))
 
 
 @client.event
@@ -57,49 +59,6 @@ async def change_prefix(ctx, prefix):
     prefixes[str(ctx.guild.id)] = prefix
     json_write('prefix', prefixes)
     await ctx.send(f'Prefix changed to {prefix}')
-
-
-@client.command()
-async def ping(ctx):
-    """
-    Test command to get latency
-    """
-    await ctx.send(f'{round(client.latency * 1000)}ms')
-
-@client.command()
-@commands.guild_only()
-@commands.is_owner()
-async def leave_unregistered(ctx):
-    prefixes = json_read('prefix')
-    keys = prefixes.keys()
-    new_keys = []
-    for key in keys:
-        new_keys.append(int(key))
-    for guild in client.guilds:
-        if guild.id not in new_keys:
-            await guild.leave()
-
-@client.command()
-@commands.guild_only()
-@commands.is_owner()
-async def register(ctx):
-    prefixes = json_read('prefix')
-    keys = prefixes.keys()
-    new_keys = []
-    for key in keys:
-        new_keys.append(int(key))
-    for guild in client.guilds:
-        if guild.id not in new_keys:
-            prefixes[str(guild.id)] = '?'
-    json_write('prefix', prefixes)
-
-
-
-
-@client.command()
-@commands.is_owner()
-async def logout(ctx):
-    await client.logout()
 
 
 client.run(os.getenv("TOKEN"))

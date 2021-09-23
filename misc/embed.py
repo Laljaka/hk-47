@@ -7,8 +7,8 @@ def player_embed(author, title, desc, colour, thumb):
         description=desc,
         colour=colour,
     )
-
-    embed.set_author(name=author)
+    if author is not None:
+        embed.set_author(name=author)
     if thumb is not None:
         embed.set_thumbnail(url=thumb)
 
