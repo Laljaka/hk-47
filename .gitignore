@@ -2,7 +2,5 @@
 .replit
 poetry.lock
 pyproject.toml
-storage/channels.json
-storage/insta.json
 storage/prefix.json
-storage/roleassign.json
+misc/cookies.txt
