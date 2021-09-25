@@ -6,6 +6,8 @@ from requests import get
 
 from youtube_dl import YoutubeDL
 
+from misc.parser import *
+
 
 class music_cog(commands.Cog, name='Music control'):
     def __init__(self, bot):
@@ -43,7 +45,7 @@ class music_cog(commands.Cog, name='Music control'):
 
     async def before_countdown(self):
         print('countdown has started')
-        await asyncio.sleep(60)
+        await asyncio.sleep(120)
 
     def task_launcher(self, ctx):
         new_task = tasks.loop(seconds=20.0)(self.countdown)
@@ -61,10 +63,17 @@ class music_cog(commands.Cog, name='Music control'):
                 except Exception:
                     return False
             else:
-                try:
-                    info = ydl.extract_info(item, download=False)
-                except Exception:
-                    return False
+                testable = parse_check(item)
+                if testable is not None:
+                    try:
+                        info = ydl.extract_info(f"ytsearch:{testable}", download=False)['entries'][0]
+                    except Exception:
+                        return False
+                else:
+                    try:
+                        info = ydl.extract_info(item, download=False)
+                    except Exception:
+                        return False
 
         return {'source': info['formats'][0]['url'], 'title': info['title'], 'thumbnail': info['thumbnail']}
 
@@ -251,10 +260,7 @@ class music_cog(commands.Cog, name='Music control'):
     @commands.guild_only()
     @commands.is_owner()
     async def testing(self, ctx, msg=None):
-        embed = player_embed(None, 'Test:', 'something', discord.Colour.blurple(), None,)
-        embed.add_field(name='Name', value='[position](https://stackoverflow.com)')
-        await ctx.send(embed=embed)
-        print(msg)
+        await ctx.send('placeholder')
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):

@@ -53,3 +53,5 @@ class owner_cog(commands.Cog, name='Owner stuff'):
     @commands.is_owner()
     async def logout(self, ctx):
         await self.bot.logout()
+
+
