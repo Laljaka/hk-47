@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from cogs.music_cog import music_cog
 from cogs.feedback_cog import feedback_cog
 from cogs.owner_cog import owner_cog
+from cogs.lavalink_music_cog import LavalinkMusicCog
 
 load_dotenv()
 
@@ -32,6 +33,7 @@ async def on_ready():
                                  activity=discord.Activity(type=discord.ActivityType.listening,
                                                            name='the screams of meatbags'))
     print('Bot is ready as {0.user}'.format(client))
+    client.add_cog((LavalinkMusicCog(client)))
 
 
 @client.event

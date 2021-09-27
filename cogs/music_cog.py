@@ -262,15 +262,15 @@ class music_cog(commands.Cog, name='Music control'):
     async def testing(self, ctx, msg=None):
         await ctx.send('placeholder')
 
-    @commands.Cog.listener()
-    async def on_voice_state_update(self, member, before, after):
-        if member.id == self.bot.user.id and after.channel is None:
-            if self.is_stopping[member.guild.id] is True:
-                pass
-            else:
-                await self.vc[member.guild.id].disconnect(force=True)
-                self.music_queue[member.guild.id].clear()  # NEW
-                self.vc[member.guild.id].stop()
-                self.is_playing[member.guild.id] = False
-                print("forcefully kicked")
+    # @commands.Cog.listener()
+    # async def on_voice_state_update(self, member, before, after):
+    #     if member.id == self.bot.user.id and after.channel is None:
+    #         if self.is_stopping[member.guild.id] is True:
+    #             pass
+    #         else:
+    #             await self.vc[member.guild.id].disconnect(force=True)
+    #             self.music_queue[member.guild.id].clear()  # NEW
+    #             self.vc[member.guild.id].stop()
+    #             self.is_playing[member.guild.id] = False
+    #             print("forcefully kicked")
 
