@@ -7,7 +7,7 @@ sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id="8cf20745c9
 
 defaulturl = 'https://api.deezer.com/'
 
-__all__ = ['parse_check']
+__all__ = ['parse_check', 'parse_check_bool']
 
 
 def parse_deezer(msg):
@@ -15,11 +15,11 @@ def parse_deezer(msg):
     if 'playlist' in r.url:
         # start = r.url.find('playlist/') + len('playlist/')
         # pretext = 'playlist/'
-        return False
+        return None
     elif 'album' in r.url:
         # start = r.url.find('album/') + len('album/')
         # pretext = 'album/'
-        return False
+        return None
     elif 'track' in r.url:
         start = r.url.find('track/') + len('track/')
         pretext = 'track/'
@@ -36,7 +36,7 @@ def parse_deezer(msg):
             result.append(link['artist']['name'] + link['title'])
         return result
     else:
-        return jsson['artist']['name'] + ' ' + jsson['title']
+        return 'ytsearch:' + jsson['artist']['name'] + ' ' + jsson['title']
 
 
 def parse_spotify(msg):
@@ -44,15 +44,16 @@ def parse_spotify(msg):
         results = sp.track(msg)
         artists = ''
         for artist in results['artists']:
-            artists = artists + artist['name']
-        return artists + results['name']
+            artists = artists + artist['name'] + ' '
+        return 'ytsearch:' + artists + results['name']
     # elif 'playlist' in msg:
-    #     results = sp.playlist_items('https://open.spotify.com/playlist/4xTjQDYg6kXcXqYCgiYXhv?si=G4T6-bSsSSiqrYLJz9g6nQ', fields='items')
+    #     results = sp.playlist_items(msg, fields='items')
     #     for track in results['items']:
-    #        for artist in track['track']['artists']:
-    #            print(artist['name'])
-    #        print(track['track']['name'])
-    #    return None#results#['items']['track']['name']
+    #         artists = ''
+    #         for artist in track['track']['artists']:
+    #             artists = artists + artist['name']
+    #         send.append('ytsearch:' + artists + track['track']['name'])
+    #     return send
     else:
         return None
 
@@ -66,3 +67,12 @@ def parse_check(msg):
         return res
     else:
         return None
+
+
+def parse_check_bool(msg):
+    if 'deezer' in msg:
+        return True
+    elif 'spotify' in msg:
+        return True
+    else:
+        return False

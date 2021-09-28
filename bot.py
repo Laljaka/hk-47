@@ -4,7 +4,7 @@ from discord.ext import commands
 import os
 from dotenv import load_dotenv
 
-from cogs.music_cog import music_cog
+# from cogs.music_cog import music_cog
 from cogs.feedback_cog import feedback_cog
 from cogs.owner_cog import owner_cog
 from cogs.lavalink_music_cog import LavalinkMusicCog
@@ -22,7 +22,7 @@ def get_prefix(client, message):
 
 client = commands.Bot(command_prefix=get_prefix, intents=intents)
 
-client.add_cog(music_cog(client))
+# client.add_cog(music_cog(client))
 client.add_cog(feedback_cog(client))
 client.add_cog(owner_cog(client))
 

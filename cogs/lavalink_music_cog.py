@@ -3,11 +3,12 @@ import discord
 from discord.ext import commands, tasks
 import lavalink
 import asyncio
+from misc.parser import *
 
 url_rx = re.compile(r'https?://(?:www\.)?.+')
 
 
-class LavalinkMusicCog(commands.Cog):
+class LavalinkMusicCog(commands.Cog, name='Music control'):
     def __init__(self, bot):
         self.bot = bot
         self.bot.lavalink = lavalink.Client(self.bot.user.id)
@@ -44,28 +45,29 @@ class LavalinkMusicCog(commands.Cog):
 
         # These are commands that require the bot to join a voicechannel (i.e. initiating playback).
         # Commands such as volume/skip etc don't require the bot to be in a voicechannel so don't need listing here.
-        should_connect = ctx.command.name in ('play_new',)
+        should_check = ctx.command.name in ('stats',)
+        should_connect = ctx.command.name in ('play',)
+        if not should_check:
+            if not ctx.author.voice or not ctx.author.voice.channel:
+                # Our cog_command_error handler catches this and sends it to the voicechannel.
+                # Exceptions allow us to "short-circuit" command invocation via checks so the
+                # execution state of the command goes no further.
+                raise commands.CommandInvokeError('Join a voicechannel first.')
 
-        if not ctx.author.voice or not ctx.author.voice.channel:
-            # Our cog_command_error handler catches this and sends it to the voicechannel.
-            # Exceptions allow us to "short-circuit" command invocation via checks so the
-            # execution state of the command goes no further.
-            raise commands.CommandInvokeError('Join a voicechannel first.')
+            if not player.is_connected:
+                if not should_connect:
+                    raise commands.CommandInvokeError('Not connected.')
 
-        if not player.is_connected:
-            if not should_connect:
-                raise commands.CommandInvokeError('Not connected.')
+                permissions = ctx.author.voice.channel.permissions_for(ctx.me)
 
-            permissions = ctx.author.voice.channel.permissions_for(ctx.me)
+                if not permissions.connect or not permissions.speak:  # Check user limit too?
+                    raise commands.CommandInvokeError('I need the `CONNECT` and `SPEAK` permissions.')
 
-            if not permissions.connect or not permissions.speak:  # Check user limit too?
-                raise commands.CommandInvokeError('I need the `CONNECT` and `SPEAK` permissions.')
-
-            player.store('channel', ctx.channel.id)
-            await ctx.guild.change_voice_state(channel=ctx.author.voice.channel, self_mute=False, self_deaf=True)
-        else:
-            if int(player.channel_id) != ctx.author.voice.channel.id:
-                raise commands.CommandInvokeError('You need to be in my voicechannel.')
+                player.store('channel', ctx.channel.id)
+                await ctx.guild.change_voice_state(channel=ctx.author.voice.channel, self_mute=False, self_deaf=True)
+            else:
+                if int(player.channel_id) != ctx.author.voice.channel.id:
+                    raise commands.CommandInvokeError('You need to be in my voicechannel.')
 
     async def countdown(self, gid):
         print('commence')
@@ -83,6 +85,7 @@ class LavalinkMusicCog(commands.Cog):
         guild = self.bot.get_guild(gid)
         cid = player.fetch('channel')
         channel = guild.get_channel(cid)
+        player.store('leaving', True)
         await guild.change_voice_state(channel=None)
         await channel.send('*⃣ | I left the voice chat due to inactivity')
         self.cancel_task(gid)
@@ -109,14 +112,20 @@ class LavalinkMusicCog(commands.Cog):
             self.task_launcher(guild_id)
             # guild = self.bot.get_guild(guild_id)
             # await guild.change_voice_state(channel=None)
-        if isinstance(event, lavalink.events.TrackEndEvent):
-            print('track ends TODO')
+        if isinstance(event, lavalink.events.TrackStartEvent):
+            guild = self.bot.get_guild(int(event.player.guild_id))
+            cid = event.player.fetch('channel')
+            channel = guild.get_channel(cid)
+            embed = discord.Embed(colour=discord.Colour.dark_green())
+            embed.title = 'Now Playing'
+            embed.description = f'[{event.player.current.title}]({event.player.current.uri})'
+            await channel.send(embed=embed)
         if isinstance(event, lavalink.events.NodeDisconnectedEvent):
             print('node disconnected')
 
-    @commands.command(aliases=['p_new'])
-    async def play_new(self, ctx, *, query: str):
-        """ Searches and plays a song from a given query. """
+    @commands.command(aliases=['p'])
+    async def play(self, ctx, *, query: str):
+        """ Searches and plays a song from a given query or adds it to the queue """
         # Get the player for this guild from cache.
         player = self.bot.lavalink.player_manager.get(ctx.guild.id)
         # Remove leading and trailing <>. <> may be used to suppress embedding links in Discord.
@@ -126,6 +135,9 @@ class LavalinkMusicCog(commands.Cog):
         # SoundCloud searching is possible by prefixing "scsearch:" instead.
         if not url_rx.match(query):
             query = f'ytsearch:{query}'
+        else:
+            if parse_check_bool(query):
+                query = parse_check(query)
 
         # Get the results for the query from Lavalink.
         results = await player.node.get_tracks(query)
@@ -171,33 +183,48 @@ class LavalinkMusicCog(commands.Cog):
             await player.play()
 
     @commands.command()
-    async def skip_new(self, ctx, pos=None):
+    async def skip(self, ctx, position=None):
+        """ Skips current song or song at specified position in queue """
         player = self.bot.lavalink.player_manager.get(ctx.guild.id)
         if not player.is_connected:
             # We can't disconnect, if we're not connected.
             return await ctx.send('Not connected.')
+        if not ctx.author.voice or (player.is_connected and ctx.author.voice.channel.id != int(player.channel_id)):
+            # Abuse prevention. Users not in voice channels, or not in the same voice channel as the bot
+            # may not disconnect the bot.
+            return await ctx.send('You\'re not in my voicechannel!')
         # if not len(player.queue) > 0 and not player.is_playing:
         #     return await ctx.send('The queue is empty.')
         try:
-            to_int = int(pos)
+            to_int = int(position)
         except Exception:
-            await player.stop()
+            # await player.stop()
             await player.skip()
+            await ctx.message.add_reaction('\U0001F44D')
         else:
             if len(player.queue) >= to_int > 1:
                 player.queue.pop(to_int - 2)
             elif to_int == 1:
-                await player.stop()
+                # await player.stop()
                 await player.skip()
+                await ctx.message.add_reaction('\U0001F44D')
             else:
                 await ctx.send('No song at stated position')
 
     @commands.command()
-    async def queue_new(self, ctx):
+    async def queue(self, ctx):
+        """ Displays the queue """
         player = self.bot.lavalink.player_manager.get(ctx.guild.id)
+
         if not player.is_connected:
             # We can't disconnect, if we're not connected.
             return await ctx.send('Not connected.')
+
+        if not ctx.author.voice or (player.is_connected and ctx.author.voice.channel.id != int(player.channel_id)):
+            # Abuse prevention. Users not in voice channels, or not in the same voice channel as the bot
+            # may not disconnect the bot.
+            return await ctx.send('You\'re not in my voicechannel!')
+
         if not len(player.queue) > 0:
             return await ctx.send('The queue is empty.')
         embed = discord.Embed(title='Queue:', color=discord.Color.gold())
@@ -206,9 +233,9 @@ class LavalinkMusicCog(commands.Cog):
             embed.add_field(name=f'{track.title}', value=f'in position {i + 2}', inline=False)
         await ctx.send(embed=embed)
 
-    @commands.command(aliases=['dc'])
+    @commands.command(aliases=['dc', 'leave', 'l'])
     async def disconnect(self, ctx):
-        """ Disconnects the player from the voice channel and clears its queue. """
+        """ Disconnects the bot from the voice channel and clears the queue. """
         player = self.bot.lavalink.player_manager.get(ctx.guild.id)
 
         if not player.is_connected:
@@ -226,8 +253,26 @@ class LavalinkMusicCog(commands.Cog):
         # Stop the current track so Lavalink consumes less resources.
         await player.stop()
         # Disconnect from the voice channel.
+        player.store('leaving', True)
         await ctx.guild.change_voice_state(channel=None)
-        await ctx.send('*⃣ | Disconnected.')
+        # await ctx.send('*⃣ | Disconnected.')
+        await ctx.message.add_reaction('\U0001F44D')
+
+    @commands.command()
+    async def stop(self, ctx):
+        """ Stops playing and clears the queue. """
+        player = self.bot.lavalink.player_manager.get(ctx.guild.id)
+        if not player.is_connected:
+            # We can't disconnect, if we're not connected.
+            return await ctx.send('Not connected.')
+
+        if not ctx.author.voice or (player.is_connected and ctx.author.voice.channel.id != int(player.channel_id)):
+            # Abuse prevention. Users not in voice channels, or not in the same voice channel as the bot
+            # may not disconnect the bot.
+            return await ctx.send('You\'re not in my voicechannel!')
+        player.queue.clear()
+        await player.stop()
+        await ctx.message.add_reaction('\U0001F44D')
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
@@ -236,6 +281,8 @@ class LavalinkMusicCog(commands.Cog):
             # if self.is_stopping[member.guild.id] is True:
             #     pass
             # else:
+            if player.fetch('leaving'):
+                return player.delete('leaving')
             player.queue.clear()
             await player.stop()
             # await member.guild.change_voice_state(channel=None)

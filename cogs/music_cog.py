@@ -259,8 +259,22 @@ class music_cog(commands.Cog, name='Music control'):
     @commands.command()
     @commands.guild_only()
     @commands.is_owner()
-    async def testing(self, ctx, msg=None):
-        await ctx.send('placeholder')
+    async def testing(self, ctx):
+        # await ctx.send('placeholder')
+        guild = self.bot.get_guild(647080905445212161)
+        print(guild.name)
+        member = guild.get_member(186899647560679425)
+        print(member.name)
+        print(member.voice.channel.name)
+        vc = await member.voice.channel.connect()
+        song = self.search_yt('https://www.youtube.com/watch?v=FgxoZ1qi4JM')
+        self.music_queue[member.guild.id] = []
+        self.music_queue[member.guild.id].append([song, None])
+        m_url = self.music_queue[member.guild.id][0][0]['source']
+        source = await discord.FFmpegOpusAudio.from_probe(m_url, **self.FFMPEG_OPTIONS)
+        vc.play(source, after=lambda e: self.bot.loop.create_task(self.play_next(ctx)))
+
+
 
     # @commands.Cog.listener()
     # async def on_voice_state_update(self, member, before, after):
